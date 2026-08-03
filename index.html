@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080d18" />
+    <title>Fourteen Nights</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">XIV</span><span>FOURTEEN NIGHTS</span></div>
+        <div id="topStatus" class="top-status">THE ROAD TO RESCUE</div>
+        <button id="soundButton" class="quiet-button" type="button" aria-label="Toggle sound">SOUND: OFF</button>
+      </header>
+
+      <section class="stage" aria-label="Fourteen Nights game">
+        <canvas id="game" width="1280" height="720" aria-label="Game canvas"></canvas>
+        <div id="hud" class="hud hidden">
+          <div class="hud-top">
+            <div><span class="eyebrow">NIGHT</span><strong id="nightLabel">01</strong></div>
+            <div class="timer"><span class="eyebrow">UNTIL DAWN</span><strong id="timerLabel">01:30</strong></div>
+            <div class="cash"><span class="eyebrow">CASH</span><strong id="cashLabel">$0</strong></div>
+          </div>
+          <div class="hud-bottom">
+            <div class="meter-block"><span>BARRICADE</span><div class="meter"><i id="barricadeBar"></i></div><b id="barricadeText">100 / 100</b></div>
+            <div id="weaponHud" class="weapon-hud"></div>
+            <div class="meter-block health"><span>HEALTH</span><div class="meter"><i id="healthBar"></i></div><b id="healthText">100 / 100</b></div>
+          </div>
+        </div>
+
+        <div id="overlay" class="overlay"></div>
+      </section>
+
+      <footer class="legend">
+        <span><kbd>WASD</kbd> move</span><span><kbd>MOUSE</kbd> aim / fire</span><span><kbd>R</kbd> reload</span><span><kbd>1</kbd><kbd>2</kbd> swap weapons</span>
+      </footer>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
