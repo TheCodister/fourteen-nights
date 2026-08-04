@@ -21,7 +21,22 @@ canvas { width:100%; height:100%; min-height:510px; display:block; cursor:crossh
 .timer { text-align:center; }.timer strong { color:var(--gold); font-size:39px; }.cash { text-align:right; }.cash strong { color:var(--acid); }
 .meter-block { min-width:min(27vw,260px); font-family:"DM Mono",monospace; }.meter-block b { font-size:10px; color:#d9e7e9; font-weight:400; }
 .meter { height:7px; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.19); margin:5px 0 3px; overflow:hidden; }.meter i { display:block; height:100%; width:100%; background:var(--red); transition:width .15s; }.health .meter i { background:var(--acid); }
-.weapon-hud { text-align:center; min-width:260px; }.weapon-hud .weapon-name { display:block; color:var(--white); font-size:23px; font-weight:700; letter-spacing:.06em; }.weapon-hud .ammo { color:var(--gold); font:500 15px "DM Mono",monospace; }.weapon-hud .reload { color:var(--red); font:500 12px "DM Mono",monospace; letter-spacing:.1em; }
+.hud-side { display:flex; align-items:flex-end; gap:20px; }.hud-side.right { justify-content:flex-end; }.tally { text-align:center; }.tally strong { font-size:23px; color:#dce8ed; }.hud-side.right .tally strong { color:var(--white); }
+.streak-badge { margin-top:6px; padding:2px 8px; color:#160707; background:var(--gold); font:500 11px "DM Mono",monospace; letter-spacing:.1em; white-space:nowrap; animation:pop .18s ease-out; }
+.weapon-hud { text-align:center; min-width:260px; }
+.weapon-slots { display:flex; gap:8px; justify-content:center; }
+.weapon-slot { display:grid; grid-template-columns:auto 1fr; grid-template-areas:"key name" "key ammo"; align-items:center; gap:0 7px; padding:5px 9px; border:1px solid rgba(200,220,239,.22); background:rgba(6,11,20,.5); text-align:left; opacity:.5; transition:.15s ease; }
+.weapon-slot.active { opacity:1; border-color:var(--gold); background:rgba(255,207,84,.1); }
+.weapon-slot.empty { opacity:.28; }
+.slot-key { grid-area:key; color:#b6c7d1; font:10px "DM Mono",monospace; border:1px solid #607080; padding:1px 4px; }
+.slot-name { grid-area:name; color:var(--white); font-size:17px; font-weight:700; letter-spacing:.05em; line-height:1; }
+.slot-ammo { grid-area:ammo; color:var(--gold); font:500 12px "DM Mono",monospace; }
+.weapon-slot.low .slot-ammo { color:var(--red); }
+.reload-track { position:relative; height:12px; margin:0 auto 6px; max-width:220px; background:rgba(0,0,0,.65); border:1px solid rgba(255,255,255,.22); overflow:hidden; transition:opacity .12s; }
+/* Idle keeps the row's height so the weapon slots never jump on reload. */
+.reload-track.idle { opacity:0; }
+.reload-track i { display:block; height:100%; width:0; background:var(--red); }
+.reload-label { position:absolute; inset:0; color:var(--white); font:500 9px "DM Mono",monospace; letter-spacing:.16em; line-height:12px; }
 .overlay { position:absolute; inset:0; display:grid; place-items:center; background:linear-gradient(180deg,rgba(3,7,14,.05),rgba(3,7,14,.7)); }
 .overlay:empty { pointer-events:none; background:transparent; }
 .overlay-panel { width:min(720px, calc(100% - 36px)); padding:clamp(24px,5vw,54px); background:rgba(7,12,23,.88); border-top:2px solid var(--red); box-shadow:0 18px 80px #000b; text-align:center; animation:rise .35s ease-out; }
@@ -32,4 +47,5 @@ canvas { width:100%; height:100%; min-height:510px; display:block; cursor:crossh
 .time-allocation { margin:24px auto 18px; max-width:520px; padding:18px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); text-align:left; }.time-allocation span { display:flex; justify-content:space-between; color:#dce8ed; font:700 18px "Barlow Condensed",sans-serif; letter-spacing:.06em; }.time-allocation span b { color:var(--red); }.time-allocation input { width:100%; accent-color:var(--red); margin:14px 0 18px; }.allocation-readout { display:grid; grid-template-columns:1fr 1fr; gap:2px 20px; text-align:center; }.allocation-readout strong { color:var(--gold); font:700 26px "Barlow Condensed",sans-serif; }.allocation-readout small { color:var(--muted); font:10px "DM Mono",monospace; }
 .survivor-loadout-list { max-height:280px; overflow:auto; margin:20px 0; text-align:left; }.survivor-loadout { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }.survivor-loadout strong,.survivor-loadout small { display:block; }.survivor-loadout strong { color:var(--acid); font-size:19px; }.survivor-loadout small { color:var(--muted); font:10px "DM Mono",monospace; margin-top:2px; }.survivor-loadout select { min-width:145px; padding:7px; background:#111c28; color:var(--white); border:1px solid #586777; font:12px "DM Mono",monospace; }
 @keyframes rise { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
-@media (max-width:620px) { .top-status,.legend span:nth-child(n+3){ display:none; }.game-shell{padding:8px}.stage{margin-top:8px}.hud{padding:14px}.hud strong{font-size:25px}.timer strong{font-size:30px}.hud-bottom{gap:8px}.meter-block{min-width:92px}.weapon-hud{min-width:115px}.weapon-hud .weapon-name{font-size:17px}.choice-row,.shop-grid{grid-template-columns:1fr}.overlay-panel{padding:24px 18px}.overlay h1{font-size:58px} }
+@keyframes pop { from { opacity:0; transform:scale(.86) } to { opacity:1; transform:none } }
+@media (max-width:620px) { .top-status,.legend span:nth-child(n+3),.tally{ display:none; }.game-shell{padding:8px}.stage{margin-top:8px}.hud{padding:14px}.hud strong{font-size:25px}.timer strong{font-size:30px}.hud-bottom{gap:8px}.meter-block{min-width:92px}.weapon-hud{min-width:115px}.weapon-slots{gap:4px}.slot-name{font-size:13px}.slot-ammo{font-size:10px}.reload-track{max-width:140px}.choice-row,.shop-grid{grid-template-columns:1fr}.overlay-panel{padding:24px 18px}.overlay h1{font-size:58px} }

@@ -4,7 +4,13 @@ A browser-based, side-view zombie survival shooter. Hold the barricade for fourt
 
 ## Play
 
-Open `index.html` in a modern desktop browser. No installation, build step, server, or account is required.
+The game is loaded as ES modules, so it must be served over HTTP — opening `index.html` from the filesystem will be blocked by the browser. There is still no build step and no dependencies:
+
+```bash
+npm run dev     # python3 -m http.server 8080
+```
+
+Then visit `http://localhost:8080`.
 
 > Tip: browser local storage saves permanent Scrap upgrades between runs. Clearing site data resets that progress.
 
@@ -19,15 +25,24 @@ Open `index.html` in a modern desktop browser. No installation, build step, serv
 | `1` / `2` | Equip your primary or secondary weapon |
 | `Esc` | Pause or resume the current night |
 
-Weapons have infinite reserve ammunition but finite magazines. Reloading starts automatically when a magazine is empty.
+Weapons have infinite reserve ammunition but finite magazines. Reloading starts automatically when a magazine is empty, and a bar above the weapon slots shows how much of it is left.
+
+## Reading the HUD
+
+- Both carried weapons stay on screen with their magazines. The idle slot is dimmed; a magazine at or below a quarter turns red.
+- **KILLS** and **HORDE** track your run total and how many zombies are alive right now.
+- Consecutive headshots build a cash multiplier, shown as a gold badge under the clock once you reach three.
+- Every bite on the barricade shakes the screen and pulses a red frame. The frame stays lit while the barricade is under 40%, and turns hard red once it is gone.
 
 ## Combat
 
 - Zombies arrive from the right and attack the barricade first.
 - A Pistol body shot deals 20 damage, so a basic 100-health zombie needs **five body shots**.
 - Headshots kill regular zombies instantly. Aim for the enlarged head hit zone.
+- Each of your own headshots adds **+5% cash**, up to **×2.00**. One of your body-shot kills drops the streak to zero; survivor kills never affect it. The streak resets at the start of every night.
+- Spitters lob acid at where you were standing, marked by a ring that closes on the landing spot. Whatever a spit hits leaves a puddle that costs **14 health per second** while you stand in it, so the safe yard shrinks as they work it over.
 - If the barricade breaks, the night is not automatically lost. Kite the zombies inside the protected zone—but if one reaches you, the run ends.
-- Every night lasts 90 seconds. Waves become faster and arrive in larger groups as nights advance.
+- At 90 seconds, new zombies stop spawning; the night ends only after the remaining horde is destroyed. Waves become faster and arrive in larger groups as nights advance.
 - Night 7 introduces **The Foreman**; Night 14 ends with **The Passenger** boss and the rescue sequence.
 
 ## Barricade and dawn planning
@@ -46,6 +61,7 @@ Survivors stand behind the barricade and fire automatically.
 - Their accuracy is intentionally imperfect: **40–60%**.
 - Each starts with a Pistol and reloads after emptying its magazine.
 - In the armory, choose **Survivor Weapons** to assign a spare owned weapon to a specific survivor.
+- An assigned weapon supplies that survivor's own damage, fire rate, projectile speed, pellets/spread, piercing, and on-screen gun design.
 - A non-Pistol weapon is exclusive: assigning it to a survivor removes it from the player loadout until reassigned.
 
 ## Armory and progression
@@ -73,18 +89,49 @@ Completed nights also award permanent **Scrap**. Spend Scrap from the title scre
 | Light Machine Gun | Sustained fire with a slow reload |
 | Moonbeam-9 | Rare sci-fi piercing weapon |
 
-## Project files
+## Project layout
 
-- `index.html` — game shell and HUD
-- `style.css` — interface and responsive layout
-- `app.js` — game simulation, combat, waves, armory, and progression
+```
+index.html            game shell and HUD markup
+style.css             interface and responsive layout
+src/
+  main.js             entry point: binds input + UI, starts the loop
+  config.js           arena dimensions, night length, world bounds
+  data/               balance tables — weapons, zombies, survivors, upgrades
+  core/               state, persistence, events, input, audio, frame loop
+  systems/            per-frame simulation: combat, bullets, zombies, bots, acid + puddles, particles
+  game/               orchestration: run, night, dawn, loadout
+  render/             canvas drawing: environment, actors, weapon sprites, scene
+                      (actors.js pins zombie head/body art to the hit zones in
+                       systems/bullets.js — moving one means moving the other)
+  ui/                 DOM — HUD and overlay screens
+tests/smoke.mjs       headless end-to-end test (no browser needed)
+```
+
+Layer rule, enforced by convention: `config`/`data` import nothing, `core` imports data, `systems` and `game` read and mutate state, `render` and `ui` read state. **Nothing in `game/` or `systems/` imports from `render/` or `ui/`** — the simulation talks to the interface only by emitting events from `core/events.js`.
+
+### Where to make a change
+
+| Change | File |
+| --- | --- |
+| Add or rebalance a weapon | `src/data/weapons.js` (+ a sprite in `src/render/weaponSprites.js`) |
+| Add a zombie type or boss | `src/data/zombies.js` |
+| Add a survivor or perk | `src/data/survivors.js` (perk is read where `appliedIn` says) |
+| Add a permanent upgrade | `src/data/upgrades.js` |
+| Rebalance scrap or the headshot streak payout | `src/data/upgrades.js` (`SCRAP`, `STREAK`) |
+| Tune acid flight, puddle damage or lifetime | `src/systems/acid.js` (`ACID`) |
+| Change zombie or human proportions | `src/render/actors.js` (`Z`, `BODY`) |
+| Tune blood spray, gibs or ground stains | `src/systems/particles.js` |
+| Tune barricade bite feedback | `src/systems/zombies.js` (`BITE`) + `VIGNETTE` in `src/render/scene.js` |
+| Change wave pacing | `src/systems/spawner.js` |
+| Change night flow or endings | `src/game/night.js` |
+| Add a screen | `src/ui/screens/`, wired in `src/ui/index.js` |
 
 ## Development
 
-The game is a dependency-free static web project. To serve it locally instead of opening the file directly:
-
-```powershell
-python -m http.server 4173
+```bash
+npm run dev      # serve on :8080
+npm test         # headless smoke test in node
 ```
 
-Then visit `http://127.0.0.1:4173`.
+`npm test` stubs a minimal DOM and canvas, boots the real `src/main.js`, and drives real frames: spawning, firing, kills, barricade collapse, dawn planning, the armory, and the night 7 boss.
