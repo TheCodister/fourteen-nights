@@ -4,7 +4,8 @@
    should hold a long-lived reference to a state object. */
 import { PLAYER_MAX_HP } from '../config.js';
 import { STARTING_WEAPON } from '../data/weapons.js';
-import { loadScrap, loadUpgrades, saveProfile } from './storage.js';
+import { DEFAULT_DIFFICULTY, difficulties } from '../data/difficulty.js';
+import { loadScrap, loadUpgrades, loadDifficulty, saveProfile } from './storage.js';
 
 /** @typedef {'title'|'playing'|'paused'|'between'|'gameover'|'victory'} Scene */
 
@@ -22,6 +23,8 @@ export function createState() {
     cash: 0,
     scrap: loadScrap(),
     upgrades: loadUpgrades(),
+    /** Difficulty id; scales zombie hp/headHp and the cash/Scrap payout. */
+    difficulty: difficulties[loadDifficulty()] ? loadDifficulty() : DEFAULT_DIFFICULTY,
 
     /** `step`/`moving` drive the renderer's walk cycle; set in systems/player.js. */
     player: { x: 270, y: 445, hp: PLAYER_MAX_HP, step: 0, moving: false },

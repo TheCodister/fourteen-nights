@@ -160,5 +160,65 @@ drive(50);
 invincible = false;
 assert('night 7 spawns the foreman', stateModule.state.zombies.some((z) => z.boss && z.type === 'foreman'));
 
+// Difficulty: assert the published body/headshot table, in Pistol shots.
+const { scaleZombie } = await import('../src/data/difficulty.js');
+const { bosses } = await import('../src/data/zombies.js');
+const PISTOL = 20;
+const ARMOR_SCALE = 0.75;
+const bodyShots = (template, id) => {
+  const { hp } = scaleZombie(template, id);
+  return Math.ceil(hp / (PISTOL * (template.armor ? ARMOR_SCALE : 1)));
+};
+const headShots = (template, id, boss = false) => scaleZombie(template, id, boss).headHp;
+
+const table = [
+  ['easy', 5, 1, 15, 2, 6, 8],
+  ['medium', 5, 1, 12, 2, 8, 10],
+  ['hard', 7, 2, 10, 3, 10, 13]
+];
+for (const [id, nBody, nHead, tBody, tHead, foreman, passenger] of table) {
+  assert(`${id}: shambler ${nBody} body / ${nHead} headshot`,
+    bodyShots(types.shambler, id) === nBody && headShots(types.shambler, id) === nHead);
+  assert(`${id}: tough ${tBody} body / ${tHead} headshots`,
+    bodyShots(types.tough, id) === tBody && headShots(types.tough, id) === tHead);
+  assert(`${id}: bosses ${foreman} / ${passenger} headshots`,
+    headShots(bosses[7], id, true) === foreman && headShots(bosses[14], id, true) === passenger);
+}
+
+// A spawned zombie must carry the scaled values, not the raw table's.
+localStorage.setItem('fn_difficulty', 'hard');
+lookup('#again').onclick();
+stateModule.state.difficulty = 'hard';
+const { spawnZombie, spawnBoss } = await import('../src/systems/spawner.js');
+stateModule.state.zombies.length = 0;
+spawnZombie('shambler');
+spawnBoss(bosses[7]);
+const [shambler, foremanBoss] = stateModule.state.zombies;
+assert('hard spawns scale shambler hp and headHp',
+  shambler.hp === 140 && shambler.maxHp === 140 && shambler.headHp === 2);
+assert('hard spawns scale boss headHp', foremanBoss.headHp === 10);
+
+/* End-to-end on hard: drive real bullets into a real head and confirm the first
+   headshot no longer kills. Guards the whole chain, not just the data table. */
+const { updateBullets } = await import('../src/systems/bullets.js');
+stateModule.state.zombies.length = 0;
+stateModule.state.bullets.length = 0;
+spawnZombie('shambler');
+const victim = stateModule.state.zombies[0];
+// Spawns land at x~1325, off the right edge, where bullets are culled as spent.
+Object.assign(victim, { x: 800, y: 500 });
+const headshotAt = () => {
+  stateModule.state.bullets.push({
+    x: victim.x, y: victim.y - victim.r * 0.68, vx: 0, vy: 0,
+    damage: 20, pierce: 0, life: 1, bot: false, color: '#fff', trail: 10, projectileSize: 2
+  });
+  updateBullets(0.016);
+};
+headshotAt();
+assert('hard: first headshot wounds but does not kill',
+  stateModule.state.zombies.length === 1 && victim.headHp === 1);
+headshotAt();
+assert('hard: second headshot kills', stateModule.state.zombies.length === 0);
+
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

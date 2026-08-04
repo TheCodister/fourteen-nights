@@ -2,6 +2,7 @@
 import { ACTOR_SCALE, SPAWN_ZONE, NIGHT_LENGTH } from '../config.js';
 import { state } from '../core/state.js';
 import { types, bosses } from '../data/zombies.js';
+import { scaleZombie } from '../data/difficulty.js';
 
 /** Spawn interval eases from `start` to `end` seconds across the night. */
 const CADENCE = {
@@ -30,23 +31,29 @@ export function chooseType() {
 
 export function spawnZombie(typeName) {
   const type = types[typeName] || types.shambler;
+  // Difficulty owns hp/headHp; the spread must not leak the unscaled values.
+  const { hp, headHp } = scaleZombie(type, state.difficulty);
   state.zombies.push({
     ...type,
     type: typeName,
     r: type.r * ACTOR_SCALE,
     x: SPAWN_ZONE.x + Math.random() * SPAWN_ZONE.xJitter,
     y: SPAWN_ZONE.y + Math.random() * SPAWN_ZONE.yJitter,
-    maxHp: type.hp,
-    hp: type.hp,
+    maxHp: hp,
+    hp,
     boss: false,
-    headHp: type.armor ? 2 : 1,
+    headHp,
     attackCd: 0,
     bob: Math.random() * 6.28
   });
 }
 
 export function spawnBoss(template) {
-  state.zombies.push({ ...template, boss: true, x: 1340, y: 410, attackCd: 0, bob: 0 });
+  const { hp, headHp } = scaleZombie(template, state.difficulty, true);
+  state.zombies.push({
+    ...template, boss: true, maxHp: hp, hp, headHp,
+    x: 1340, y: 410, attackCd: 0, bob: 0
+  });
   state.bossSpawned = true;
 }
 

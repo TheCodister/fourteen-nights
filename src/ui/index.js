@@ -2,6 +2,8 @@
    and src/ui — the game layer never imports a screen. */
 import { on, EVENTS } from '../core/events.js';
 import { toggleAudio } from '../core/audio.js';
+import { state } from '../core/state.js';
+import { difficultyOf } from '../data/difficulty.js';
 import { elements, clearOverlay, showHud, setStatus, pad } from './dom.js';
 import { dawnScreen } from './screens/dawn.js';
 import { gameOverScreen, victoryScreen } from './screens/endings.js';
@@ -10,7 +12,7 @@ export function bindUi() {
   on(EVENTS.NIGHT_START, ({ night }) => {
     clearOverlay();
     showHud(true);
-    setStatus(`HOLD UNTIL DAWN — NIGHT ${pad(night)}`);
+    setStatus(`HOLD UNTIL DAWN — NIGHT ${pad(night)} · ${difficultyOf(state.difficulty).name}`);
   });
 
   on(EVENTS.NIGHT_SURVIVED, () => {

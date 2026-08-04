@@ -37,13 +37,33 @@ Weapons have infinite reserve ammunition but finite magazines. Reloading starts 
 ## Combat
 
 - Zombies arrive from the right and attack the barricade first.
-- A Pistol body shot deals 20 damage, so a basic 100-health zombie needs **five body shots**.
-- Headshots kill regular zombies instantly. Aim for the enlarged head hit zone.
+- A Pistol body shot deals 20 damage. On Easy a basic 100-health zombie needs **five body shots**, and headshots kill regular zombies instantly — see the difficulty table below for the other tiers.
+- Aim for the enlarged head hit zone.
 - Each of your own headshots adds **+5% cash**, up to **×2.00**. One of your body-shot kills drops the streak to zero; survivor kills never affect it. The streak resets at the start of every night.
 - Spitters lob acid at where you were standing, marked by a ring that closes on the landing spot. Whatever a spit hits leaves a puddle that costs **14 health per second** while you stand in it, so the safe yard shrinks as they work it over.
 - If the barricade breaks, the night is not automatically lost. Kite the zombies inside the protected zone—but if one reaches you, the run ends.
 - At 90 seconds, new zombies stop spawning; the night ends only after the remaining horde is destroyed. Waves become faster and arrive in larger groups as nights advance.
 - Night 7 introduces **The Foreman**; Night 14 ends with **The Passenger** boss and the rescue sequence.
+
+## Difficulty
+
+Chosen on the title screen and remembered between runs. Easy is the default and is the original balance.
+
+Difficulty shifts the **ratio** between body shots and headshots rather than simply inflating health. As it rises, more headshots are required, while bigger zombies actually take *fewer* body shots — precision becomes the answer, and spraying stays viable but slow.
+
+Counts below are Pistol shots (20 damage, 15 through armour):
+
+| | Easy | Medium | Hard |
+| --- | --- | --- | --- |
+| Shambler | 5 body / 1 headshot | 5 body / 1 headshot | 7 body / 2 headshots |
+| Tough (armoured) | 15 body / 2 headshots | 12 body / 2 headshots | 10 body / 3 headshots |
+| The Foreman | 6 headshots | 8 headshots | 10 headshots |
+| The Passenger | 8 headshots | 10 headshots | 13 headshots |
+| Cash and Scrap | ×1 | ×1.2 | ×1.5 |
+
+Health is scaled by multiplier, not rewritten per type, so the roster keeps its shape — a runner stays faster and frailer than a spitter at every tier. Medium leaves regular zombies exactly as Easy has them; its bite is in the bosses.
+
+Tune it all in `src/data/difficulty.js`; `npm test` asserts every number in the table above.
 
 ## Barricade and dawn planning
 
@@ -118,6 +138,7 @@ Layer rule, enforced by convention: `config`/`data` import nothing, `core` impor
 | Add a zombie type or boss | `src/data/zombies.js` |
 | Add a survivor or perk | `src/data/survivors.js` (perk is read where `appliedIn` says) |
 | Add a permanent upgrade | `src/data/upgrades.js` |
+| Retune a difficulty or add a tier | `src/data/difficulty.js` |
 | Rebalance scrap or the headshot streak payout | `src/data/upgrades.js` (`SCRAP`, `STREAK`) |
 | Tune acid flight, puddle damage or lifetime | `src/systems/acid.js` (`ACID`) |
 | Change zombie or human proportions | `src/render/actors.js` (`Z`, `BODY`) |

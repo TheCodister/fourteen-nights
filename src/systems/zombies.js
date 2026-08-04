@@ -3,6 +3,7 @@ import { BARRICADE_X, PLAYER_HIT_RADIUS, SPITTER_RANGE_X } from '../config.js';
 import { state } from '../core/state.js';
 import { SFX } from '../core/audio.js';
 import { upgrades, streakMultiplier } from '../data/upgrades.js';
+import { difficultyOf } from '../data/difficulty.js';
 import { PERKS } from '../data/survivors.js';
 import { hasSurvivor, rank } from '../game/loadout.js';
 import { bloodKill } from './particles.js';
@@ -32,7 +33,8 @@ export function killZombie(z, headshot = false, byBot = false) {
   SFX.kill(headshot);
   const cashBonus = (hasSurvivor('accountant') ? PERKS.accountant.cashMultiplier : 1)
     * (headshot ? 1 + rank('clean') * upgrades.clean.step : 1)
-    * streakMultiplier(state.streak);
+    * streakMultiplier(state.streak)
+    * difficultyOf(state.difficulty).reward;
   state.cash += Math.ceil(z.cash * cashBonus);
   state.killed++;
   bloodKill(z.x, z.y, z.r, headshot, z.boss);

@@ -5,6 +5,7 @@ import { state, saveProgress } from '../core/state.js';
 import { emit, EVENTS } from '../core/events.js';
 import { PERKS } from '../data/survivors.js';
 import { SCRAP } from '../data/upgrades.js';
+import { difficultyOf } from '../data/difficulty.js';
 import { hasSurvivor } from './loadout.js';
 import { serviceWeapons } from '../systems/combat.js';
 import { updatePlayer } from '../systems/player.js';
@@ -93,10 +94,15 @@ export function updateNight(dt) {
   }
 }
 
+/** Scrap payouts carry the difficulty reward bonus, same as in-run cash. */
+function scrapReward(amount) {
+  return Math.round(amount * difficultyOf(state.difficulty).reward);
+}
+
 function surviveNight() {
   state.scene = 'between';
   const tier = Math.floor((state.night - 1) / SCRAP.tierEvery);
-  state.scrap += SCRAP.perNight + tier * SCRAP.tierBonus;
+  state.scrap += scrapReward(SCRAP.perNight + tier * SCRAP.tierBonus);
   saveProgress();
   emit(EVENTS.NIGHT_SURVIVED, { night: state.night });
 }
@@ -104,14 +110,14 @@ function surviveNight() {
 function endRun() {
   if (state.scene !== 'playing') return;
   state.scene = 'gameover';
-  state.scrap += Math.max(0, (state.night - 1) * SCRAP.perNightOnDeath);
+  state.scrap += scrapReward(Math.max(0, (state.night - 1) * SCRAP.perNightOnDeath));
   saveProgress();
   emit(EVENTS.RUN_OVER, { night: state.night });
 }
 
 function winRun() {
   state.scene = 'victory';
-  state.scrap += SCRAP.victory;
+  state.scrap += scrapReward(SCRAP.victory);
   saveProgress();
   emit(EVENTS.RUN_WON, { killed: state.killed });
 }

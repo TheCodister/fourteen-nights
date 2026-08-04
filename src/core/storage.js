@@ -2,6 +2,7 @@
    degrades to a fresh profile instead of throwing during boot. */
 const KEY_SCRAP = 'fn_scrap';
 const KEY_UPGRADES = 'fn_upgrades';
+const KEY_DIFFICULTY = 'fn_difficulty';
 
 function read(key, fallback) {
   try {
@@ -32,6 +33,15 @@ export function loadUpgrades() {
   } catch {
     return {};
   }
+}
+
+/** Last chosen difficulty id, so the title screen reopens on your pick. */
+export function loadDifficulty() {
+  return read(KEY_DIFFICULTY, '');
+}
+
+export function saveDifficulty(id) {
+  write(KEY_DIFFICULTY, id);
 }
 
 export function saveProfile({ scrap, upgrades }) {
