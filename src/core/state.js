@@ -30,6 +30,8 @@ export function createState() {
     player: { x: 270, y: 445, hp: PLAYER_MAX_HP, step: 0, moving: false },
     barricade: 100,
     maxBarr: 100,
+    /** Barricade fortification tier; 0 is bare boards. See data/fortifications.js. */
+    fortification: 0,
 
     armory: [STARTING_WEAPON],
     weapons: [STARTING_WEAPON, null],
@@ -55,7 +57,10 @@ export function createState() {
     /** Blood stains on the ground; they outlive the droplets that made them. */
     decals: [],
     acid: [],
-    puddles: [],
+    /** Damaging ground patches: acid, bile, fire. See systems/zones.js. */
+    zones: [],
+    /** In-flight explosive ordnance. */
+    throwables: [],
 
     elapsed: 0,
     spawnClock: 1,

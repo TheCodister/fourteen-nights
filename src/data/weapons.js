@@ -31,6 +31,25 @@ export const weapons = {
     name: 'LIGHT MACHINE GUN', price: 2600, mag: 60, reload: 4, damage: 42, fire: 0.1, bulletSpeed: 1150,
     color: '#ff934b', accent: '#4e5553', muzzle: 61, trail: 62, projectileSize: 2.5
   },
+  /* Explosive ordnance. `throwable` routes the shot through systems/throwables.js
+     instead of spawning bullets: it arcs to the cursor and detonates there.
+     `damage` is the peak blast damage, or damage-per-second for fire. Blasts
+     never harm the player or the survivor line. */
+  molotov: {
+    name: 'MOLOTOV KIT', price: 1500, mag: 2, reload: 3, damage: 60, fire: 0.95, bulletSpeed: 520,
+    throwable: { kind: 'fire', radius: 74 },
+    color: '#ff9d4b', accent: '#6b3a22', muzzle: 38, trail: 26, projectileSize: 4
+  },
+  launcher: {
+    name: 'GRENADE LAUNCHER', price: 2300, mag: 4, reload: 3.2, damage: 165, fire: 0.85, bulletSpeed: 620,
+    throwable: { kind: 'blast', radius: 118 }, heavy: true,
+    color: '#9be86a', accent: '#4b5a33', muzzle: 56, trail: 30, projectileSize: 5
+  },
+  buster: {
+    name: 'BUNKER BUSTER', price: 3900, mag: 1, reload: 3.6, damage: 320, fire: 1.1, bulletSpeed: 700,
+    throwable: { kind: 'blast', radius: 168 }, heavy: true,
+    color: '#ff6b4b', accent: '#4a4038', muzzle: 64, trail: 34, projectileSize: 6
+  },
   moonbeam: {
     name: 'MOONBEAM-9', price: 4500, mag: 8, reload: 2.8, damage: 180, fire: 0.46, bulletSpeed: 1150, pierce: 8,
     moon: true, rare: true,

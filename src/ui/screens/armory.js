@@ -13,9 +13,10 @@
    weapon to pick it up, tap a destination to put it down. */
 import { state } from '../../core/state.js';
 import { weapons, STARTING_WEAPON } from '../../data/weapons.js';
+import { fortifications, nextFortification } from '../../data/fortifications.js';
 import { startNight } from '../../game/night.js';
 import {
-  priceFor, buyWeapon, holderOf, moveWeapon, unassignSurvivor, clearPlayerSlot, survivorWeapon
+  priceFor, buyWeapon, buyFortification, holderOf, moveWeapon, unassignSurvivor, clearPlayerSlot, survivorWeapon
 } from '../../game/loadout.js';
 import { elements, showOverlay, pad } from '../dom.js';
 
@@ -41,6 +42,7 @@ export function shopScreen() {
     <p><b style="color:#c8ff58">$${state.cash}</b> available &nbsp; | &nbsp;
        ${state.armory.length} weapon${state.armory.length === 1 ? '' : 's'} in the rack</p>
     <div class="shop-grid">${cards}</div>
+    ${fortificationRow()}
     <button class="action secondary" id="loadout">ARRANGE LOADOUT</button>
     <button class="action" id="continue">${beginLabel()}</button>
   `, { loadout: loadoutScreen, continue: startNight });
@@ -50,6 +52,40 @@ export function shopScreen() {
       if (buyWeapon(button.dataset.weapon)) shopScreen();
     };
   });
+
+  const fortButton = elements.overlay.querySelector('#buyFort');
+  if (fortButton) {
+    fortButton.onclick = () => {
+      if (buyFortification()) shopScreen();
+    };
+  }
+}
+
+/* The barricade upgrade line. This is where late-run cash goes once the rack is
+   full — fortification damage keeps working while you reload or revive. */
+function fortificationRow() {
+  const built = state.fortification
+    ? fortifications[state.fortification - 1]
+    : null;
+  const next = nextFortification(state.fortification);
+  const current = built
+    ? `<b style="color:#c8ff58">${built.name}</b> — ${built.dps} dmg/sec at the line`
+    : '<span style="color:#98a8b5">Bare boards. Nothing hurts them on the way in.</span>';
+
+  if (!next) {
+    return `<div class="fort-row"><span class="fort-label">BARRICADE</span>
+      <p>${current}<br><small>Fully fortified.</small></p></div>`;
+  }
+
+  const afford = state.cash >= next.price;
+  return `<div class="fort-row">
+    <span class="fort-label">BARRICADE</span>
+    <p>${current}</p>
+    <button class="fort-buy" id="buyFort" ${afford ? '' : 'disabled'}>
+      <strong>${next.name} · $${next.price}</strong>
+      <small>${next.copy}</small>
+    </button>
+  </div>`;
 }
 
 export function loadoutScreen() {

@@ -20,6 +20,14 @@ export function bindUi() {
     dawnScreen();
   });
 
+  on(EVENTS.SURVIVOR_DOWN, ({ name }) => {
+    setStatus(`${name.toUpperCase()} IS DOWN — REACH THEM TO REVIVE`);
+  });
+
+  on(EVENTS.SURVIVOR_LOST, ({ name }) => {
+    setStatus(`${name.toUpperCase()} DIDN'T MAKE IT`);
+  });
+
   on(EVENTS.RUN_OVER, () => {
     showHud(false);
     gameOverScreen();

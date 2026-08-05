@@ -12,6 +12,7 @@ import { updatePlayer } from '../systems/player.js';
 import { createBots, updateBots } from '../systems/bots.js';
 import { runSpawnDirector } from '../systems/spawner.js';
 import { updateBullets } from '../systems/bullets.js';
+import { updateThrowables } from '../systems/throwables.js';
 import { updateZombies } from '../systems/zombies.js';
 import { updateAcid } from '../systems/acid.js';
 import { updateParticles } from '../systems/particles.js';
@@ -31,7 +32,8 @@ export function startNight() {
   state.zombies = [];
   state.bullets = [];
   state.acid = [];
-  state.puddles = [];
+  state.zones = [];
+  state.throwables = [];
   state.particles = [];
   state.decals = [];
   state.barrFlash = 0;
@@ -80,6 +82,7 @@ export function updateNight(dt) {
   const spawnWindowOpen = remaining > 0;
   if (spawnWindowOpen) runSpawnDirector(dt);
 
+  updateThrowables(dt);
   updateBullets(dt);
   if (updateZombies(dt, spawnWindowOpen)) return endRun();
   if (updateAcid(dt)) return endRun();

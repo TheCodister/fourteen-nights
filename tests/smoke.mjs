@@ -112,7 +112,7 @@ assert('barricade bites raise the vignette pulse', flashPeak > 0);
 invincible = true;
 const { types } = await import('../src/data/zombies.js');
 stateModule.state.acid.length = 0;
-stateModule.state.puddles.length = 0;
+stateModule.state.zones.length = 0;
 stateModule.state.zombies.push({
   ...types.spitter, type: 'spitter', r: 26, x: 700, y: 460,
   maxHp: types.spitter.hp, hp: types.spitter.hp, boss: false, headHp: 1, attackCd: 0, bob: 0
@@ -121,10 +121,10 @@ drive(0.1);
 const spit = stateModule.state.acid[0];
 assert('spitters lob acid at a telegraphed landing spot', !!spit && spit.flight > 0 && spit.tx > 0);
 drive(2.5);
-assert('acid leaves a puddle behind', stateModule.state.puddles.length > 0);
+assert('acid leaves a zone behind', stateModule.state.zones.length > 0);
 
 invincible = false;
-const puddle = stateModule.state.puddles[0];
+const puddle = stateModule.state.zones[0];
 stateModule.state.barricade = stateModule.state.maxBarr;
 Object.assign(stateModule.state.player, { x: puddle.x, y: puddle.y, hp: 100 });
 drive(0.5);
@@ -341,6 +341,152 @@ const pistolRate = shotsPerSecond('pistol');
    ~2.5/s before the handicap became multiplicative. */
 assert(`survivor SMG sustains a fast rate (${smgRate.toFixed(1)}/s, was ~2.5/s)`, smgRate > 5);
 assert('survivor SMG clearly outpaces their Pistol', smgRate > pistolRate * 2.5);
+
+/* Survivor mortality. The roster loss has to survive the night, so these assert
+   on state.survivors and not just on the per-night bot. */
+const bots = await import('../src/systems/bots.js');
+const { BOT_VITALS } = await import('../src/data/survivors.js');
+st.survivors = [{ id: 'mechanic', name: 'Mechanic Mae' }, { id: 'nurse', name: 'Nurse Nia' }];
+st.survivorLoadout = {};
+st.zombies = [];
+st.bots = bots.createBots();
+const mae = st.bots[0];
+
+bots.hurtBot(mae, 10);
+assert('a survivor takes damage without going down', !mae.downed && mae.hp === BOT_VITALS.hp - 10);
+assert('hurt survivors are still counted as live', bots.liveBots().length === 2);
+
+bots.hurtBot(mae, BOT_VITALS.hp);
+assert('enough damage downs a survivor', mae.downed && mae.bleed > 0);
+assert('a downed survivor stops shooting', bots.liveBots().length === 1);
+
+// Standing over them revives; they come back hurt.
+Object.assign(st.player, { x: mae.x, y: mae.y });
+bots.updateBots(BOT_VITALS.reviveTime + 0.1);
+assert('standing with a downed survivor revives them', !mae.downed && mae.hp > 0 && mae.hp < BOT_VITALS.hp);
+
+// Bleeding out with nobody nearby loses them from the run for good.
+bots.hurtBot(mae, BOT_VITALS.hp * 2);
+Object.assign(st.player, { x: 90, y: 620 });
+bots.updateBots(BOT_VITALS.bleedOut + 0.1);
+assert('bleeding out removes the survivor from the roster',
+  st.survivors.length === 1 && st.survivors[0].id === 'nurse');
+assert('the lost survivor leaves the bot line', st.bots.every((b) => b.survivor.id !== 'mechanic'));
+
+/* Pouncer: leaps the barricade and pins a survivor, who then cannot fight back. */
+const zombiesSystem = await import('../src/systems/zombies.js');
+st.survivors = [{ id: 'nurse', name: 'Nurse Nia' }];
+st.bots = bots.createBots();
+const nia = st.bots[0];
+st.zombies = [{
+  ...types.pouncer, type: 'pouncer', r: 24, x: 690, y: nia.y,
+  maxHp: 130, hp: 130, boss: false, headHp: 1, attackCd: 0, bob: 0
+}];
+const pouncer = st.zombies[0];
+st.barricade = st.maxBarr;
+for (let i = 0; i < 80 && !pouncer.pinnedBot; i++) zombiesSystem.updateZombies(0.016, true);
+assert('a pouncer crosses the barricade and pins a survivor',
+  pouncer.pinnedBot === nia && nia.pinnedBy === pouncer);
+const pinnedHp = nia.hp;
+zombiesSystem.updateZombies(0.5, true);
+assert('a pinned survivor is being mauled', nia.hp < pinnedHp);
+bots.updateBots(2);
+assert('a pinned survivor cannot shoot', st.bullets.length === 0);
+zombiesSystem.killZombie(pouncer, false, true);
+assert('killing the pouncer frees the survivor', !nia.pinnedBy);
+
+/* Bloater: the burst only harms your own side, so killing it at the line is the
+   mistake and killing it at range costs nothing. */
+st.bots = bots.createBots();
+const nearBot = st.bots[0];
+st.zones.length = 0;
+st.zombies = [{
+  ...types.bloater, type: 'bloater', r: 32, x: nearBot.x + 40, y: nearBot.y,
+  maxHp: 260, hp: 260, boss: false, headHp: 1, attackCd: 0, bob: 0
+}];
+zombiesSystem.killZombie(st.zombies[0], false, true);
+assert('a bloater bursting nearby hurts the survivor line', nearBot.hp < BOT_VITALS.hp);
+assert('a bloater leaves a bile zone', st.zones.some((z) => z.kind === 'bile'));
+
+st.bots = bots.createBots();
+const farBot = st.bots[0];
+st.zombies = [{
+  ...types.bloater, type: 'bloater', r: 32, x: farBot.x + 600, y: farBot.y,
+  maxHp: 260, hp: 260, boss: false, headHp: 1, attackCd: 0, bob: 0
+}];
+zombiesSystem.killZombie(st.zombies[0], false, true);
+assert('a bloater killed at range costs nothing', farBot.hp === BOT_VITALS.hp);
+
+// The new types are held back to the late nights.
+assert('pouncer and bloater unlock late',
+  types.pouncer.unlockNight >= 9 && types.bloater.unlockNight >= 11);
+
+/* Explosives: blast damage falls off with distance and never touches your side. */
+const { throwOrdnance, updateThrowables } = await import('../src/systems/throwables.js');
+const { weapons: allWeapons } = await import('../src/data/weapons.js');
+st.zones.length = 0;
+st.throwables.length = 0;
+st.bots = bots.createBots();
+const bystander = st.bots[0];
+Object.assign(st.player, { x: 300, y: 500, hp: 100 });
+const nearZ = { ...types.shambler, type: 'shambler', r: 25, x: 300, y: 500, maxHp: 100, hp: 100, boss: false, headHp: 1, attackCd: 0, bob: 0 };
+const farZ = { ...types.shambler, type: 'shambler', r: 25, x: 1100, y: 500, maxHp: 100, hp: 100, boss: false, headHp: 1, attackCd: 0, bob: 0 };
+st.zombies = [nearZ, farZ];
+throwOrdnance(200, 500, 300, 500, allWeapons.launcher);
+for (let i = 0; i < 60 && st.throwables.length; i++) updateThrowables(0.016);
+assert('a grenade detonates on arrival', st.throwables.length === 0);
+assert('the blast kills what it lands on', !st.zombies.includes(nearZ));
+assert('the blast spares zombies outside its radius', farZ.hp === 100);
+assert('no friendly fire: the player is untouched', st.player.hp === 100);
+assert('no friendly fire: survivors are untouched', bystander.hp === BOT_VITALS.hp);
+
+// Molotov leaves a fire zone, and fire burns zombies rather than survivors.
+st.throwables.length = 0;
+throwOrdnance(200, 500, 640, 500, allWeapons.molotov);
+for (let i = 0; i < 90 && st.throwables.length; i++) updateThrowables(0.016);
+const fire = st.zones.find((z) => z.kind === 'fire');
+assert('a molotov leaves a fire zone', !!fire && fire.harms === 'zombies');
+
+const { updateZones } = await import('../src/systems/zones.js');
+const burning = { ...types.shambler, type: 'shambler', r: 25, x: fire.x, y: fire.y, maxHp: 400, hp: 400, boss: false, headHp: 1, attackCd: 0, bob: 0 };
+st.zombies = [burning];
+Object.assign(st.player, { x: fire.x, y: fire.y, hp: 100 });
+updateZones(0.5);
+assert('fire burns zombies standing in it', burning.hp < 400);
+assert('fire does not burn the player', st.player.hp === 100);
+
+/* Barricade fortifications: contact damage at the line, and only while it stands. */
+const { fortificationDps, fortifications } = await import('../src/data/fortifications.js');
+const { buyFortification } = loadout;
+assert('bare boards do no contact damage', fortificationDps(0) === 0);
+assert('each tier hurts more than the last',
+  fortifications.every((f, i) => i === 0 || f.dps > fortifications[i - 1].dps));
+
+st.cash = 0;
+st.fortification = 0;
+assert('a fortification cannot be bought without cash', !buyFortification());
+st.cash = 10000;
+assert('buying advances the tier', buyFortification() && st.fortification === 1);
+const spentTo = st.cash;
+while (buyFortification()); // exhaust the tiers
+assert('tiers run out at the top', st.fortification === fortifications.length && st.cash < spentTo);
+
+// A zombie chewing a fortified barricade bleeds without the player firing a shot.
+st.fortification = 3;
+st.barricade = st.maxBarr;
+st.bots = [];
+st.zombies = [{
+  ...types.shambler, type: 'shambler', r: 25, x: 612, y: 500,
+  maxHp: 400, hp: 400, boss: false, headHp: 1, attackCd: 0, bob: 0
+}];
+const chewer = st.zombies[0];
+zombiesSystem.updateZombies(0.4, false);
+assert('fortifications damage whatever reaches the line', chewer.hp < 400);
+
+st.fortification = 0;
+chewer.hp = 400;
+zombiesSystem.updateZombies(0.4, false);
+assert('no fortification means no contact damage', chewer.hp === 400);
 
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

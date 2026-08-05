@@ -40,10 +40,11 @@ Weapons have infinite reserve ammunition but finite magazines. Reloading starts 
 - A Pistol body shot deals 20 damage. On Easy a basic 100-health zombie needs **five body shots**, and headshots kill regular zombies instantly — see the difficulty table below for the other tiers.
 - The head hit zone is a circle of **0.55×** the zombie's body radius, sitting above the body centre. It is still slightly larger than the drawn head, so a shot that visibly connects always registers — but it is tighter than it used to be, and clipping the edge of the skull no longer counts.
 - Each of your own headshots adds **+5% cash**, up to **×2.00**. One of your body-shot kills drops the streak to zero; survivor kills never affect it. The streak resets at the start of every night.
-- Spitters lob acid at where you were standing, marked by a ring that closes on the landing spot. Whatever a spit hits leaves a puddle that costs **14 health per second** while you stand in it, so the safe yard shrinks as they work it over.
+- Spitters lob acid at where you were standing, marked by a ring that closes on the landing spot. Whatever a spit hits leaves a pool that burns **you and your survivors** at 14 health per second, so the safe yard shrinks as they work it over.
 - If the barricade breaks, the night is not automatically lost. Kite the zombies inside the protected zone—but if one reaches you, the run ends.
 - At 90 seconds, new zombies stop spawning; the night ends only after the remaining horde is destroyed. Waves become faster and arrive in larger groups as nights advance.
 - Night 7 introduces **The Foreman**; Night 14 ends with **The Passenger** boss and the rescue sequence.
+- Two late types hunt your survivors rather than the barricade. The **Pouncer** (night 9+) leaps the line and pins a survivor until you shoot it off. The **Bloater** (night 11+) bursts on death, hurting only your own side — kill it at the barricade and the blast catches your front row, kill it at range and it costs nothing.
 
 ## Difficulty
 
@@ -72,6 +73,18 @@ Wave pacing and barricade damage are identical across Easy, Normal and Hard; onl
 
 Tune it all in `src/data/difficulty.js`; `npm test` asserts every number in the table above, that Nightmare's durability matches Hard exactly, and that its horde boost starts on night two.
 
+## Barricade fortifications
+
+Bought with in-run cash from the shop, so late-run money has somewhere to go once the rack is full. Each tier replaces the last and damages anything chewing on the line — continuously, whether you are reloading, reviving or across the yard. It stops working the moment the barricade falls.
+
+| Tier | Price | Contact damage |
+| --- | --- | --- |
+| Barbed Wire | $450 | 9 / sec |
+| Spike Strip | $900 | 21 / sec |
+| Electric Fence | $1800 | 44 / sec |
+
+Each tier is visible on the barricade, so the upgrade is something you can watch working.
+
 ## Barricade and dawn planning
 
 At dawn, you receive 12 hours to divide between repairs and finding survivors.
@@ -90,6 +103,15 @@ Survivors stand behind the barricade and fire automatically.
 - An assigned weapon supplies that survivor's own damage, fire rate, projectile speed, pellets/spread, piercing, and on-screen gun design.
 - They are slower on the trigger than you are, but only by a **fixed multiple of the weapon's own fire rate** (~1.4×). Hand a survivor an SMG and it still rips. The handicap used to include a flat delay per shot, which cost an SMG 3.9× its rate while a shotgun lost 1.7× — automatics felt broken in survivor hands.
 - A non-Pistol weapon is exclusive: only one holder on the whole team, player included. The Pistol is standard issue and exempt.
+
+### Survivors can die
+
+They are no longer scenery. Acid, Bloater bile and a Pouncer's teeth all hurt them.
+
+- At zero health a survivor is **downed**, not dead — they stop shooting and start bleeding out.
+- **Walk into them** and hold position to revive; they get back up on half health.
+- Let the bleed-out ring empty and they are **gone from the run permanently**, which is what finally makes dawn's search allocation a real decision.
+- A survivor pinned by a Pouncer cannot fight back until you shoot it off them.
 
 ## Armory and progression
 
@@ -118,6 +140,11 @@ Completed nights also award permanent **Scrap**. Spend Scrap from the title scre
 | Assault Rifle | Reliable all-round weapon |
 | Light Machine Gun | Sustained fire with a slow reload |
 | Moonbeam-9 | Rare sci-fi piercing weapon |
+| Molotov Kit | Lobbed fire pool; burns everything standing in it |
+| Grenade Launcher | Arcing blast, four rounds, crowd answer |
+| Bunker Buster | One rocket, huge blast, long reload |
+
+Explosives are **aimed at the ground, not along a ray** — the shot arcs to wherever the cursor is and detonates there, with a ring showing the landing spot on the way in. Blast damage falls off to the edge and **never harms the player or the survivor line**; the only explosion that hurts your side is the Bloater's.
 
 ## Project layout
 
@@ -129,7 +156,8 @@ src/
   config.js           arena dimensions, night length, world bounds
   data/               balance tables — weapons, zombies, survivors, upgrades
   core/               state, persistence, events, input, audio, frame loop
-  systems/            per-frame simulation: combat, bullets, zombies, bots, acid + puddles, particles
+  systems/            per-frame simulation: combat, bullets, throwables, zombies,
+                      bots, acid, zones, particles
   game/               orchestration: run, night, dawn, loadout
   render/             canvas drawing: environment, actors, weapon sprites, scene
                       (actors.js pins zombie head/body art to the hit zones in
@@ -150,7 +178,12 @@ Layer rule, enforced by convention: `config`/`data` import nothing, `core` impor
 | Add a permanent upgrade | `src/data/upgrades.js` |
 | Retune a difficulty or add a tier | `src/data/difficulty.js` |
 | Rebalance scrap or the headshot streak payout | `src/data/upgrades.js` (`SCRAP`, `STREAK`) |
-| Tune acid flight, puddle damage or lifetime | `src/systems/acid.js` (`ACID`) |
+| Tune acid flight or spit behaviour | `src/systems/acid.js` (`ACID`) |
+| Tune acid / bile / fire ground zones | `src/systems/zones.js` (`ZONE_KINDS`) |
+| Tune explosives and blast falloff | `src/systems/throwables.js` |
+| Retune barricade fortifications | `src/data/fortifications.js` |
+| Change survivor health, bleed-out or revive | `src/data/survivors.js` (`BOT_VITALS`) |
+| Tune the Pouncer or Bloater | `src/data/zombies.js` (`POUNCE`, `BLOAT`) |
 | Change zombie or human proportions | `src/render/actors.js` (`Z`, `BODY`) |
 | Tune blood spray, gibs or ground stains | `src/systems/particles.js` |
 | Tune barricade bite feedback | `src/systems/zombies.js` (`BITE`) + `VIGNETTE` in `src/render/scene.js` |

@@ -19,3 +19,16 @@ export const PERKS = {
 };
 
 export const BOT_ACCURACY = { min: 0.4, spread: 0.2 };
+
+/* Survivor vitality. Lives in data so both systems/bots.js and render/actors.js
+   can read it without render importing from systems. */
+export const BOT_VITALS = {
+  hp: 70,
+  /** Seconds on the ground before the survivor is lost from the run for good. */
+  bleedOut: 14,
+  reviveRadius: 62,
+  /** Seconds the player must stand with them to bring them back. */
+  reviveTime: 1.8,
+  /** Fraction of max hp restored by a revive — they get up hurt. */
+  reviveHp: 0.5
+};

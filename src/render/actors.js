@@ -11,6 +11,7 @@ import { ACTOR_SCALE } from '../config.js';
 import { state } from '../core/state.js';
 import { mouse } from '../core/input.js';
 import { weapons } from '../data/weapons.js';
+import { BOT_VITALS as BOT } from '../data/survivors.js';
 import { weaponId } from '../game/loadout.js';
 import { ctx } from './canvas.js';
 import { drawWeapon } from './weaponSprites.js';
@@ -175,6 +176,12 @@ export function drawPlayer() {
 
 export function drawBot(bot) {
   const w = weapons[bot.weaponId];
+
+  if (bot.downed) {
+    drawDownedBot(bot);
+    return;
+  }
+
   // Idle sway, offset per bot so the line does not breathe in unison.
   const sway = performance.now() / 700 + bot.index;
   drawHuman({
@@ -187,10 +194,81 @@ export function drawBot(bot) {
     weaponData: w
   });
 
-  ctx.fillStyle = w.color;
+  drawBotHealth(bot);
+
+  ctx.fillStyle = bot.pinnedBy ? '#ff4b4b' : w.color;
   ctx.font = '500 9px DM Mono';
   ctx.textAlign = 'center';
-  ctx.fillText(`${Math.round(bot.accuracy * 100)}% · ${bot.reload > 0 ? 'RELOAD' : w.name}`, bot.x, bot.y + 43);
+  const label = bot.pinnedBy
+    ? 'PINNED — SHOOT IT'
+    : `${Math.round(bot.accuracy * 100)}% · ${bot.reload > 0 ? 'RELOAD' : shortWeaponName(w.name)}`;
+  ctx.fillText(label, bot.x, bot.y + 43);
+  ctx.textAlign = 'left';
+}
+
+/* Survivors stand 84px apart, so a full name like LIGHT MACHINE GUN collides with
+   the neighbour's label. Multi-word names collapse to initials (LMG, GL). */
+function shortWeaponName(name) {
+  const words = name.split(' ');
+  return words.length > 1 ? words.map((word) => word[0]).join('') : name;
+}
+
+/** Only shown once they have actually been hurt, to keep the line uncluttered. */
+function drawBotHealth(bot) {
+  if (bot.hp >= bot.maxHp) return;
+  const width = 34;
+  ctx.fillStyle = 'rgba(8,10,14,.75)';
+  ctx.fillRect(bot.x - width / 2 - 1, bot.y - 44, width + 2, 5);
+  ctx.fillStyle = bot.hp / bot.maxHp < 0.35 ? '#ff4b4b' : '#c8ff58';
+  ctx.fillRect(bot.x - width / 2, bot.y - 43, width * (bot.hp / bot.maxHp), 3);
+}
+
+/* A downed survivor lies flat with a bleed-out ring. The ring is the timer: when
+   it empties they are gone from the run, so it has to be readable at a glance. */
+function drawDownedBot(bot) {
+  const fade = Math.max(0, bot.bleed / BOT.bleedOut);
+
+  drawShadow(bot.x, bot.y + 8, 22, 0.3);
+  ctx.save();
+  ctx.translate(bot.x, bot.y + 6);
+  ctx.rotate(Math.PI / 2);
+  ctx.scale(ACTOR_SCALE * 0.92, ACTOR_SCALE * 0.92);
+  ctx.fillStyle = BOT_SKIN.coatShade;
+  ctx.fillRect(-BODY.torsoW / 2, -14, BODY.torsoW, 26);
+  ctx.fillStyle = BOT_SKIN.trousers;
+  ctx.fillRect(-BODY.legW / 2, 12, BODY.legW, BODY.legLen);
+  ctx.fillStyle = BOT_SKIN.skin;
+  ctx.beginPath();
+  ctx.arc(0, -22, BODY.headR, 0, 7);
+  ctx.fill();
+  ctx.restore();
+
+  // Bleed-out ring.
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(8,10,14,.7)';
+  ctx.beginPath();
+  ctx.arc(bot.x, bot.y, 26, 0, 7);
+  ctx.stroke();
+  ctx.strokeStyle = fade < 0.35 ? '#ff4b4b' : '#ffcf54';
+  ctx.beginPath();
+  ctx.arc(bot.x, bot.y, 26, -Math.PI / 2, -Math.PI / 2 + fade * Math.PI * 2);
+  ctx.stroke();
+
+  // Revive progress fills inward as the player stands over them.
+  if (bot.revive > 0) {
+    ctx.strokeStyle = '#c8ff58';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(bot.x, bot.y, 19, -Math.PI / 2, -Math.PI / 2 + Math.min(1, bot.revive / BOT.reviveTime) * Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.fillStyle = '#ff8585';
+  ctx.font = '600 9px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText(bot.revive > 0 ? 'REVIVING' : `${bot.survivor.name.split(' ')[0].toUpperCase()} DOWN`, bot.x, bot.y + 44);
   ctx.textAlign = 'left';
 }
 
@@ -314,6 +392,36 @@ function drawZombieTorso(z, r) {
   ctx.moveTo(-r * 0.16, r * 0.06);
   ctx.lineTo(-r * 0.05, r * 0.3);
   ctx.stroke();
+
+  if (z.bloat) {
+    // Distended gut with bile showing through — the thing that will burst.
+    ctx.fillStyle = '#6d8a44';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.04, r * 0.3, r * 0.52, r * 0.46, 0, 0, 7);
+    ctx.fill();
+    ctx.save();
+    ctx.shadowColor = '#c6e86a';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#b6dd5c';
+    for (const [bx, by, br] of [[-r * 0.1, r * 0.22, 0.17], [r * 0.2, r * 0.38, 0.13], [-r * 0.24, r * 0.44, 0.1]]) {
+      ctx.beginPath();
+      ctx.ellipse(bx, by, r * br, r * br * 0.86, 0, 0, 7);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (z.pounce) {
+    // Overgrown shoulders and hind legs: coiled to jump.
+    ctx.fillStyle = '#12160f';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.2, r * Z.shoulderY - r * 0.08, r * 0.34, r * 0.2, -0.3, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = '#c9dd7c';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.2, r * Z.shoulderY - r * 0.09, r * 0.29, r * 0.16, -0.3, 0, 7);
+    ctx.fill();
+  }
 
   if (z.spit) {
     // Swollen acid sac at the throat, lit from inside.

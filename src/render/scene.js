@@ -23,9 +23,10 @@ export function render() {
   }
 
   drawDecals();
-  drawPuddles();
+  drawZones();
   drawAcidMarkers();
   drawBullets();
+  drawThrowables();
   for (const z of state.zombies) drawZombie(z);
   for (const bot of state.bots) drawBot(bot);
   drawPlayer();
@@ -54,21 +55,59 @@ function drawDecals() {
   ctx.restore();
 }
 
-/* Ground-level acid. Fades out with the puddle's remaining life so its danger
+/* Ground zones: acid, bloater bile, molotov fire. Colour comes from the zone so
+   one loop covers all three, and the fade tracks remaining life so the danger
    window is legible without a HUD readout. */
-function drawPuddles() {
-  for (const p of state.puddles) {
-    const fade = Math.min(1, p.life / p.maxLife);
+function drawZones() {
+  for (const zone of state.zones) {
+    const fade = Math.min(1, zone.life / zone.maxLife);
     ctx.save();
     ctx.globalAlpha = 0.2 + fade * 0.42;
-    ctx.fillStyle = '#c8ff58';
+    ctx.fillStyle = zone.color;
     ctx.beginPath();
-    ctx.ellipse(p.x, p.y, p.r, p.r * 0.42, 0, 0, 7);
+    ctx.ellipse(zone.x, zone.y, zone.r, zone.r * 0.42, 0, 0, 7);
     ctx.fill();
+    if (zone.kind === 'fire') {
+      // Flames flicker upward out of the pool.
+      ctx.globalAlpha = 0.32 + fade * 0.4;
+      ctx.fillStyle = '#ffd166';
+      for (let i = 0; i < 7; i++) {
+        const t = performance.now() / 120 + i * 1.7 + zone.x;
+        const fx = zone.x + Math.cos(i * 2.4) * zone.r * 0.62;
+        ctx.beginPath();
+        ctx.ellipse(fx, zone.y - 10 - (Math.sin(t) + 1) * 9, 5, 13, 0, 0, 7);
+        ctx.fill();
+      }
+    }
     ctx.globalAlpha = 0.35 + fade * 0.45;
-    ctx.strokeStyle = '#eaffb0';
+    ctx.strokeStyle = zone.color;
     ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(zone.x, zone.y, zone.r, zone.r * 0.42, 0, 0, 7);
     ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* Ordnance in flight, plus the ring showing where it will land. */
+function drawThrowables() {
+  for (const o of state.throwables) {
+    ctx.save();
+    ctx.globalAlpha = 0.3 + o.progress * 0.5;
+    ctx.strokeStyle = o.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(o.tx, o.ty, o.radius, o.radius * 0.42, 0, 0, 7);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.rotate(o.spin || 0);
+    ctx.fillStyle = o.color;
+    ctx.shadowColor = o.color;
+    ctx.shadowBlur = 12;
+    ctx.fillRect(-6, -3.5, 12, 7);
     ctx.restore();
   }
 }

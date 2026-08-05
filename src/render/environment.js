@@ -615,7 +615,63 @@ function drawBarricade(dawn) {
     for (let i = 0; i < 4; i++) ctx.fillRect(x + 12 + i * 16, 458, 3, 3);
   }
 
+  drawFortification(dawn);
   drawSandbags(dawn);
+}
+
+/* Whatever is bolted to the line, by tier. Visible so the upgrade is something
+   you can see working, not just a number in the shop. */
+function drawFortification(dawn) {
+  const tier = state?.fortification || 0;
+  if (!tier) return;
+  const { x, w, top, bottom } = BARRICADE;
+  const right = x + w + 6;
+
+  if (tier >= 1) {
+    // Barbed wire: a coil down the outer face with barbs on it.
+    ctx.strokeStyle = mixColor('#8f9aa1', '#c3c9c6', dawn);
+    ctx.lineWidth = 2;
+    for (let y = top + 22; y < bottom - 16; y += 26) {
+      ctx.beginPath();
+      ctx.arc(right, y, 9, -1.9, 1.9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(right + 4, y - 6); ctx.lineTo(right + 13, y - 9);
+      ctx.moveTo(right + 6, y + 4); ctx.lineTo(right + 15, y + 7);
+      ctx.stroke();
+    }
+  }
+  if (tier >= 2) {
+    // Spikes jutting out into the road.
+    ctx.fillStyle = mixColor('#6d6a63', '#a9a49a', dawn);
+    for (let y = top + 30; y < bottom - 20; y += 34) {
+      ctx.beginPath();
+      ctx.moveTo(right + 2, y - 5);
+      ctx.lineTo(right + 24, y);
+      ctx.lineTo(right + 2, y + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (tier >= 3) {
+    // Live wire: arcs crackle along the boards.
+    const pulse = 0.45 + Math.abs(Math.sin(performance.now() / 190)) * 0.55;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#9fd8ff';
+    ctx.shadowColor = '#6cc4ff';
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 2;
+    for (let y = top + 18; y < bottom - 14; y += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y);
+      for (let step = 0; step < 4; step++) {
+        ctx.lineTo(x - 8 + (step + 1) * ((w + 20) / 4), y + (step % 2 ? 5 : -5));
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 
 /** Sandbags stacked on the yard side, at the foot of the wall. */

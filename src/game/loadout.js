@@ -3,6 +3,7 @@
 import { state } from '../core/state.js';
 import { weapons, STARTING_WEAPON } from '../data/weapons.js';
 import { upgrades } from '../data/upgrades.js';
+import { nextFortification } from '../data/fortifications.js';
 
 export function weaponId() {
   return state.weapons[state.selected] || state.weapons[0];
@@ -118,4 +119,13 @@ function normalizeLoadout() {
     if (state.weapons[1] === state.weapons[0]) state.weapons[1] = null;
   }
   if (!state.weapons[state.selected]) state.selected = 0;
+}
+
+/** Buys the next barricade fortification tier with in-run cash. */
+export function buyFortification() {
+  const next = nextFortification(state.fortification);
+  if (!next || state.cash < next.price) return false;
+  state.cash -= next.price;
+  state.fortification++;
+  return true;
 }

@@ -6,8 +6,12 @@ import { upgrades, streakMultiplier } from '../data/upgrades.js';
 import { difficultyOf } from '../data/difficulty.js';
 import { PERKS } from '../data/survivors.js';
 import { hasSurvivor, rank } from '../game/loadout.js';
-import { bloodKill } from './particles.js';
+import { POUNCE, BLOAT } from '../data/zombies.js';
+import { fortificationDps } from '../data/fortifications.js';
+import { bloodKill, burst } from './particles.js';
 import { spitAcid } from './acid.js';
+import { addZone } from './zones.js';
+import { hurtBot, liveBots } from './bots.js';
 import { spawnEscort, bossForNight } from './spawner.js';
 
 const BARRICADE_DPS_SCALE = 0.45;
@@ -39,6 +43,13 @@ export function killZombie(z, headshot = false, byBot = false) {
   state.killed++;
   bloodKill(z.x, z.y, z.r, headshot, z.boss);
 
+  // Whatever it was holding gets let go.
+  if (z.pinnedBot) {
+    z.pinnedBot.pinnedBy = null;
+    z.pinnedBot = null;
+  }
+  if (z.bloat) burstBloater(z);
+
   if (!z.boss) return;
   state.bossKilled = true;
   // A second, wider round of gore so a boss death outweighs a normal kill.
@@ -55,6 +66,9 @@ export function updateZombies(dt, spawnWindowOpen) {
   const barricadeStanding = () => state.barricade > 0;
 
   for (const z of [...state.zombies]) {
+    // Pouncers ignore the barricade entirely and go over it for the survivors.
+    if (z.pounce && huntSurvivors(z, dt)) continue;
+
     const holdingRange = z.spit && z.x < SPITTER_RANGE_X && barricadeStanding();
     const targetX = barricadeStanding() ? BARRICADE_X : state.player.x;
     const targetY = barricadeStanding() ? z.y : state.player.y;
@@ -71,6 +85,8 @@ export function updateZombies(dt, spawnWindowOpen) {
       z.y += (targetY - z.y) / dist * z.speed * dt;
     } else if (barricadeStanding()) {
       biteBarricade(z, dt);
+      // Fortifications bite back, continuously, whatever the player is doing.
+      if (bleedOnFortifications(z, dt)) continue;
     } else {
       return true;
     }
@@ -78,6 +94,87 @@ export function updateZombies(dt, spawnWindowOpen) {
     if (spawnWindowOpen && z.boss) releaseEscorts(z);
   }
   return false;
+}
+
+/* Wire, spikes or live current chewing back at whatever is chewing the boards.
+   Credited as a non-player kill so passive damage cannot pad the headshot streak.
+   @returns {boolean} true when the fortification finished the zombie off. */
+function bleedOnFortifications(z, dt) {
+  const dps = fortificationDps(state.fortification);
+  if (dps <= 0) return false;
+
+  z.hp -= dps * dt;
+  if (Math.random() < dt * 6) burst(z.x - z.r * 0.4, z.y, '#ffd7a0', 2, 90);
+  if (z.hp > 0) return false;
+
+  killZombie(z, false, true);
+  return true;
+}
+
+/* Bloater death burst. It only harms your own side, so the tension is positional:
+   let one reach the barricade and killing it catches the front survivor row and
+   anyone standing near the line. Kill it at range and it costs you nothing. */
+function burstBloater(z) {
+  burst(z.x, z.y, '#9ccf4a', 26, 240);
+  addZone('bile', z.x, z.y);
+  state.shake = Math.max(state.shake, 11);
+
+  const playerDist = Math.hypot(state.player.x - z.x, state.player.y - z.y);
+  if (playerDist < BLOAT.radius) {
+    state.player.hp -= BLOAT.damage * BLOAT.playerScale * falloff(playerDist);
+  }
+  for (const bot of [...state.bots]) {
+    if (bot.downed) continue;
+    const d = Math.hypot(bot.x - z.x, bot.y - z.y);
+    if (d < BLOAT.radius) hurtBot(bot, BLOAT.damage * falloff(d));
+  }
+}
+
+/** Linear damage falloff to the blast edge. */
+function falloff(distance) {
+  return Math.max(0, 1 - distance / BLOAT.radius);
+}
+
+/* Pouncer: closes on the nearest survivor still standing, leaps the barricade,
+   and pins them. A pinned survivor cannot shoot and takes damage until the
+   pouncer is killed, so it forces the player to drop everything and intervene.
+
+   With no survivors on the roster it has nothing to hunt and falls through to
+   normal barricade behaviour.
+   @returns {boolean} true when the pouncer handled its own movement this frame. */
+function huntSurvivors(z, dt) {
+  if (z.pinnedBot) {
+    // Ride along in case the survivor was repositioned, and keep mauling.
+    z.x = z.pinnedBot.x + z.r * 0.5;
+    z.y = z.pinnedBot.y;
+    hurtBot(z.pinnedBot, POUNCE.dps * dt);
+    if (z.pinnedBot.downed) {
+      z.pinnedBot = null;
+      z.leap = 0;
+    }
+    return true;
+  }
+
+  const prey = liveBots();
+  if (!prey.length || z.x > POUNCE.triggerX) return false;
+
+  const target = prey.reduce((best, bot) => {
+    const d = Math.hypot(bot.x - z.x, bot.y - z.y);
+    return !best || d < best.d ? { bot, d } : best;
+  }, null);
+
+  // Airborne: sail toward the survivor, clearing the barricade on the way.
+  z.leap = (z.leap || 0) + dt;
+  const step = Math.min(1, dt / POUNCE.leapTime);
+  z.x += (target.bot.x - z.x) * step;
+  z.y += (target.bot.y - z.y) * step;
+
+  if (Math.hypot(target.bot.x - z.x, target.bot.y - z.y) < z.r) {
+    z.pinnedBot = target.bot;
+    target.bot.pinnedBy = z;
+    state.shake = Math.max(state.shake, 8);
+  }
+  return true;
 }
 
 /* One chunk of barricade per bite, plus the shake and vignette pulse that sell

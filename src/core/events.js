@@ -17,5 +17,7 @@ export const EVENTS = {
   NIGHT_START: 'night:start',
   NIGHT_SURVIVED: 'night:survived',
   RUN_OVER: 'run:over',
-  RUN_WON: 'run:won'
+  RUN_WON: 'run:won',
+  SURVIVOR_DOWN: 'survivor:down',
+  SURVIVOR_LOST: 'survivor:lost'
 };

@@ -1,9 +1,15 @@
 /* Survivor bots: they hold position, target the closest zombie to the
-   barricade, miss on purpose according to their accuracy, and reload forever. */
+   barricade, miss on purpose according to their accuracy, and reload forever.
+
+   Survivors are mortal. Taking enough damage puts one on the ground, bleeding
+   out; walk into them to revive. Let the timer run out and they are gone from
+   state.survivors for the rest of the run, which is what makes dawn's search
+   allocation worth anything. */
 import { ACTOR_SCALE } from '../config.js';
 import { state } from '../core/state.js';
+import { emit, EVENTS } from '../core/events.js';
 import { weapons } from '../data/weapons.js';
-import { BOT_ACCURACY } from '../data/survivors.js';
+import { BOT_ACCURACY, BOT_VITALS as BOT } from '../data/survivors.js';
 import { survivorWeapon } from '../game/loadout.js';
 import { fireWeapon } from './combat.js';
 
@@ -36,13 +42,63 @@ export function createBots() {
       shotCd: 0.35 + index * 0.08,
       accuracy: BOT_ACCURACY.min + Math.random() * BOT_ACCURACY.spread,
       ammo: weapons[weaponId].mag,
-      reload: 0
+      reload: 0,
+      hp: BOT.hp,
+      maxHp: BOT.hp,
+      downed: false,
+      bleed: 0,
+      revive: 0,
+      /** The zombie currently pinning them, if any. */
+      pinnedBy: null
     };
   });
 }
 
+/** Every survivor still able to shoot — what the Pouncer hunts. */
+export function liveBots() {
+  return state.bots.filter((bot) => !bot.downed);
+}
+
+/**
+ * Damages a survivor, putting them on the ground at zero.
+ * @returns {boolean} true when this hit downed them.
+ */
+export function hurtBot(bot, amount) {
+  if (bot.downed) return false;
+  bot.hp -= amount;
+  if (bot.hp > 0) return false;
+
+  bot.hp = 0;
+  bot.downed = true;
+  bot.bleed = BOT.bleedOut;
+  bot.revive = 0;
+  // Whatever had hold of them lets go once they are on the ground.
+  if (bot.pinnedBy) {
+    bot.pinnedBy.pinnedBot = null;
+    bot.pinnedBy = null;
+  }
+  emit(EVENTS.SURVIVOR_DOWN, { name: bot.survivor.name });
+  return true;
+}
+
+/** Removes a survivor from the run. The roster loss persists past the night. */
+function loseSurvivor(bot) {
+  state.survivors = state.survivors.filter((survivor) => survivor.id !== bot.survivor.id);
+  state.bots = state.bots.filter((other) => other !== bot);
+  if (bot.pinnedBy) bot.pinnedBy.pinnedBot = null;
+  emit(EVENTS.SURVIVOR_LOST, { name: bot.survivor.name });
+}
+
 export function updateBots(dt) {
-  for (const bot of state.bots) {
+  // Copied because loseSurvivor() mutates state.bots mid-loop.
+  for (const bot of [...state.bots]) {
+    if (bot.downed) {
+      tendDowned(bot, dt);
+      continue;
+    }
+    // Pinned survivors cannot fight back until the zombie is shot off.
+    if (bot.pinnedBy) continue;
+
     const w = weapons[bot.weaponId];
 
     if (bot.reload > 0) {
@@ -66,7 +122,29 @@ export function updateBots(dt) {
 
     bot.aimAngle = angle;
     bot.ammo--;
-    fireWeapon(bot.x, bot.y, angle, w, ACTOR_SCALE, true);
+    fireWeapon(bot.x, bot.y, angle, w, ACTOR_SCALE, true, target.x, target.y);
     if (bot.ammo === 0) bot.reload = w.reload;
   }
+}
+
+/** Bleed-out and revive progress for a survivor on the ground. */
+function tendDowned(bot, dt) {
+  bot.bleed -= dt;
+
+  const reach = Math.hypot(state.player.x - bot.x, state.player.y - bot.y) < BOT.reviveRadius;
+  if (reach) {
+    bot.revive += dt;
+    if (bot.revive >= BOT.reviveTime) {
+      bot.downed = false;
+      bot.hp = Math.max(1, Math.round(bot.maxHp * BOT.reviveHp));
+      bot.revive = 0;
+      bot.shotCd = 0.4;
+      return;
+    }
+  } else {
+    // Progress decays if you step away, but slower than it builds.
+    bot.revive = Math.max(0, bot.revive - dt * 0.5);
+  }
+
+  if (bot.bleed <= 0) loseSurvivor(bot);
 }

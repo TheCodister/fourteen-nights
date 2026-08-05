@@ -45,6 +45,27 @@ const sprites = {
     ctx.fillStyle = w.color; ctx.fillRect(10, -8, 12, 3);
     ctx.fillStyle = '#9b724f'; ctx.fillRect(5, 5, 24, 4);
   },
+  molotov(w) {
+    ctx.fillStyle = '#2b3038'; ctx.fillRect(6, -4, 12, 16);
+    ctx.fillStyle = w.color; ctx.beginPath(); ctx.arc(24, 0, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = '#d8dee2'; ctx.fillRect(30, -3, 9, 6);
+    ctx.fillStyle = '#ffe08a'; ctx.fillRect(38, -2, 7, 4);
+  },
+  launcher(w) {
+    ctx.fillStyle = w.accent; ctx.fillRect(5, -9, 34, 14);
+    ctx.fillStyle = '#232a20'; ctx.fillRect(34, -8, 26, 12);
+    ctx.fillStyle = w.color; ctx.fillRect(56, -7, 10, 10);
+    ctx.fillStyle = '#161b16'; ctx.fillRect(16, 4, 13, 15);
+    ctx.fillStyle = '#7f9a52'; ctx.beginPath(); ctx.arc(22, -3, 6, 0, 7); ctx.fill();
+  },
+  buster(w) {
+    ctx.fillStyle = w.accent; ctx.fillRect(2, -7, 40, 12);
+    ctx.fillStyle = '#2c3238'; ctx.fillRect(38, -10, 32, 18);
+    ctx.fillStyle = w.color; ctx.beginPath();
+    ctx.moveTo(70, -10); ctx.lineTo(84, -1); ctx.lineTo(70, 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#191d21'; ctx.fillRect(14, 4, 15, 16);
+    ctx.fillStyle = '#8d939a'; ctx.fillRect(30, -14, 14, 5);
+  },
   moonbeam(w) {
     ctx.shadowColor = w.color; ctx.shadowBlur = 12;
     ctx.fillStyle = w.accent; ctx.fillRect(5, -10, 42, 15);
