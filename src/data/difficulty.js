@@ -9,44 +9,60 @@
 
    Resulting counts with the Pistol (20 damage, 15 through armour):
 
-                        EASY          MEDIUM        HARD
-     shambler        5 body / 1 hs  5 body / 1 hs  7 body / 2 hs
-     tough          15 body / 2 hs 12 body / 2 hs 10 body / 3 hs
-     Foreman head        6 hs           8 hs          10 hs
-     Passenger head      8 hs          10 hs          13 hs
+                      EASY           NORMAL         HARD/NIGHTMARE
+     shambler      5 body / 1 hs   7 body / 2 hs    9 body / 3 hs
+     tough        12 body / 2 hs  10 body / 3 hs    8 body / 4 hs
+     Foreman head      8 hs           10 hs            12 hs
+     Passenger head   10 hs           13 hs            16 hs
 
-   `bossHeadMultiplier` is rounded, and 1 / 1.3 / 1.65 lands exactly on the
-   6→8→10 and 8→10→13 targets above. Check the table still holds if you retune. */
+   `bossHeadMultiplier` is rounded; 1.3 / 1.65 / 2 lands exactly on the 8→10→12
+   and 10→13→16 targets above. Check the table still holds if you retune.
+
+   Nightmare is Hard's durability with a heavier horde, so it spreads the same
+   DURABILITY object rather than restating the numbers — the two cannot drift
+   apart by accident. */
+
+/** Shared by Hard and Nightmare: identical zombie durability by construction. */
+const HARD_DURABILITY = {
+  hpMultiplier: 1.8,
+  armorHpMultiplier: 0.545,
+  headHp: { normal: 3, armored: 4 },
+  bossHeadMultiplier: 2
+};
+
 export const difficulties = {
   easy: {
     name: 'EASY',
-    tagline: 'The original balance.',
-    copy: '5 body shots or a single headshot drops a shambler. Tough zombies need 2 headshots.',
-    hpMultiplier: 1,
-    armorHpMultiplier: 1,
-    headHp: { normal: 1, armored: 2 },
-    bossHeadMultiplier: 1,
-    reward: 1
-  },
-  medium: {
-    name: 'MEDIUM',
-    tagline: 'Bosses want precision.',
-    copy: 'Shamblers unchanged. Tough zombies soften to 12 body shots, but bosses take far more headshots. +20% cash and Scrap.',
+    blurb: 'For amateurs. Learn the barricade before it bites back.',
     hpMultiplier: 1,
     armorHpMultiplier: 0.82,
     headHp: { normal: 1, armored: 2 },
     bossHeadMultiplier: 1.3,
-    reward: 1.2
+    reward: 1
   },
-  hard: {
-    name: 'HARD',
-    tagline: 'One shot is never enough.',
-    copy: '2 headshots or 7 body shots for a shambler; 3 headshots or 10 body shots for a tough. +50% cash and Scrap.',
+  normal: {
+    name: 'NORMAL',
+    blurb: 'The dead are meaner here, but you can hold them.',
     hpMultiplier: 1.4,
     armorHpMultiplier: 0.68,
     headHp: { normal: 2, armored: 3 },
     bossHeadMultiplier: 1.65,
+    reward: 1.25
+  },
+  hard: {
+    name: 'HARD',
+    blurb: 'The horde is on another level. Only real skill survives this.',
+    ...HARD_DURABILITY,
     reward: 1.5
+  },
+  nightmare: {
+    name: 'NIGHTMARE',
+    blurb: 'Are you nuts?',
+    ...HARD_DURABILITY,
+    reward: 1.8,
+    /* Same bodies as Hard, far more of them. From night two on, every wave
+       carries an extra zombie and the spawn clock runs a quarter faster. */
+    horde: { fromNight: 2, batchBonus: 1, intervalScale: 0.75 }
   }
 };
 
@@ -65,4 +81,10 @@ export function scaleZombie(template, id, boss = false) {
     ? Math.max(1, Math.round((template.headHp || 1) * d.bossHeadMultiplier))
     : (template.armor ? d.headHp.armored : d.headHp.normal);
   return { hp, headHp };
+}
+
+/** The extra-horde rules in force on `night`, or null when the tier has none. */
+export function hordeBoostFor(id, night) {
+  const { horde } = difficultyOf(id);
+  return horde && night >= horde.fromNight ? horde : null;
 }

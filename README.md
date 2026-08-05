@@ -47,23 +47,28 @@ Weapons have infinite reserve ammunition but finite magazines. Reloading starts 
 
 ## Difficulty
 
-Chosen on the title screen and remembered between runs. Easy is the default and is the original balance.
+Four tiers, chosen on the title screen and remembered between runs. Easy is the default.
 
 Difficulty shifts the **ratio** between body shots and headshots rather than simply inflating health. As it rises, more headshots are required, while bigger zombies actually take *fewer* body shots — precision becomes the answer, and spraying stays viable but slow.
 
 Counts below are Pistol shots (20 damage, 15 through armour):
 
-| | Easy | Medium | Hard |
-| --- | --- | --- | --- |
-| Shambler | 5 body / 1 headshot | 5 body / 1 headshot | 7 body / 2 headshots |
-| Tough (armoured) | 15 body / 2 headshots | 12 body / 2 headshots | 10 body / 3 headshots |
-| The Foreman | 6 headshots | 8 headshots | 10 headshots |
-| The Passenger | 8 headshots | 10 headshots | 13 headshots |
-| Cash and Scrap | ×1 | ×1.2 | ×1.5 |
+| | Easy | Normal | Hard | Nightmare |
+| --- | --- | --- | --- | --- |
+| Shambler | 5 body / 1 headshot | 7 body / 2 headshots | 9 body / 3 headshots | 9 body / 3 headshots |
+| Tough (armoured) | 12 body / 2 headshots | 10 body / 3 headshots | 8 body / 4 headshots | 8 body / 4 headshots |
+| The Foreman | 8 headshots | 10 headshots | 12 headshots | 12 headshots |
+| The Passenger | 10 headshots | 13 headshots | 16 headshots | 16 headshots |
+| Cash and Scrap | ×1 | ×1.25 | ×1.5 | ×1.8 |
+| Horde size | — | — | — | +1 per wave and a 25% faster spawn clock, from night 2 |
 
-Health is scaled by multiplier, not rewritten per type, so the roster keeps its shape — a runner stays faster and frailer than a spitter at every tier. Medium leaves regular zombies exactly as Easy has them; its bite is in the bosses.
+**Nightmare is Hard's durability with far more bodies.** Night one is identical to Hard; from night two the extra wave size and tighter cadence land between 59% and 168% more zombies per night. The two tiers share one `HARD_DURABILITY` object in the data file, so they cannot drift apart when either is retuned.
 
-Tune it all in `src/data/difficulty.js`; `npm test` asserts every number in the table above.
+Health is scaled by multiplier, not rewritten per type, so the roster keeps its shape — a runner stays faster and frailer than a spitter at every tier.
+
+Wave pacing and barricade damage are identical across Easy, Normal and Hard; only Nightmare touches them.
+
+Tune it all in `src/data/difficulty.js`; `npm test` asserts every number in the table above, that Nightmare's durability matches Hard exactly, and that its horde boost starts on night two.
 
 ## Barricade and dawn planning
 

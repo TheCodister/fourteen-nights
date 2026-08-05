@@ -2,7 +2,7 @@
 import { ACTOR_SCALE, SPAWN_ZONE, NIGHT_LENGTH } from '../config.js';
 import { state } from '../core/state.js';
 import { types, bosses } from '../data/zombies.js';
-import { scaleZombie } from '../data/difficulty.js';
+import { scaleZombie, hordeBoostFor } from '../data/difficulty.js';
 
 /** Spawn interval eases from `start` to `end` seconds across the night. */
 const CADENCE = {
@@ -70,11 +70,17 @@ export function runSpawnDirector(dt) {
   state.spawnClock -= dt;
   if (state.spawnClock > 0) return;
 
-  const batch = Math.min(BATCH.max, BATCH.base + Math.floor((state.night - 1) / BATCH.perNights));
+  /* Nightmare adds to every wave and shortens the gap between them. The cap
+     lifts by the same bonus, or the boost would vanish on later nights. */
+  const boost = hordeBoostFor(state.difficulty, state.night);
+  const bonus = boost ? boost.batchBonus : 0;
+  const batch = Math.min(BATCH.max + bonus, BATCH.base + bonus + Math.floor((state.night - 1) / BATCH.perNights));
   for (let i = 0; i < batch; i++) spawnZombie(chooseType());
 
   const start = Math.max(CADENCE.startFloor, CADENCE.startBase - state.night * CADENCE.startPerNight);
   const end = Math.max(CADENCE.endFloor, CADENCE.endBase - state.night * CADENCE.endPerNight);
   const progress = Math.min(1, state.elapsed / NIGHT_LENGTH);
-  state.spawnClock = (start + (end - start) * progress) * (state.bossSpawned ? CADENCE.bossSlowdown : 1);
+  state.spawnClock = (start + (end - start) * progress)
+    * (state.bossSpawned ? CADENCE.bossSlowdown : 1)
+    * (boost ? boost.intervalScale : 1);
 }

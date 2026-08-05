@@ -172,9 +172,10 @@ const bodyShots = (template, id) => {
 const headShots = (template, id, boss = false) => scaleZombie(template, id, boss).headHp;
 
 const table = [
-  ['easy', 5, 1, 15, 2, 6, 8],
-  ['medium', 5, 1, 12, 2, 8, 10],
-  ['hard', 7, 2, 10, 3, 10, 13]
+  ['easy', 5, 1, 12, 2, 8, 10],
+  ['normal', 7, 2, 10, 3, 10, 13],
+  ['hard', 9, 3, 8, 4, 12, 16],
+  ['nightmare', 9, 3, 8, 4, 12, 16]
 ];
 for (const [id, nBody, nHead, tBody, tHead, foreman, passenger] of table) {
   assert(`${id}: shambler ${nBody} body / ${nHead} headshot`,
@@ -195,8 +196,32 @@ spawnZombie('shambler');
 spawnBoss(bosses[7]);
 const [shambler, foremanBoss] = stateModule.state.zombies;
 assert('hard spawns scale shambler hp and headHp',
-  shambler.hp === 140 && shambler.maxHp === 140 && shambler.headHp === 2);
-assert('hard spawns scale boss headHp', foremanBoss.headHp === 10);
+  shambler.hp === 180 && shambler.maxHp === 180 && shambler.headHp === 3);
+assert('hard spawns scale boss headHp', foremanBoss.headHp === 12);
+
+// Nightmare must match Hard's durability exactly, and only differ in wave size.
+const { difficulties } = await import('../src/data/difficulty.js');
+const durability = (d) => JSON.stringify([d.hpMultiplier, d.armorHpMultiplier, d.headHp, d.bossHeadMultiplier]);
+assert('nightmare durability is identical to hard',
+  durability(difficulties.nightmare) === durability(difficulties.hard));
+
+const { runSpawnDirector } = await import('../src/systems/spawner.js');
+/** Zombies produced by one wave on `night` at the given difficulty. */
+const waveSize = (id, night) => {
+  stateModule.state.difficulty = id;
+  stateModule.state.night = night;
+  stateModule.state.zombies.length = 0;
+  stateModule.state.bossSpawned = true; // keep the boss out of the count
+  stateModule.state.spawnClock = 0;
+  runSpawnDirector(0.016);
+  return stateModule.state.zombies.length;
+};
+assert('nightmare night 1 waves match hard', waveSize('nightmare', 1) === waveSize('hard', 1));
+assert('nightmare night 2 waves are larger than hard', waveSize('nightmare', 2) > waveSize('hard', 2));
+assert('nightmare still boosts on a late night', waveSize('nightmare', 12) > waveSize('hard', 12));
+
+stateModule.state.difficulty = 'hard';
+stateModule.state.night = 1;
 
 /* End-to-end on hard: drive real bullets into a real head and confirm the first
    headshot no longer kills. Guards the whole chain, not just the data table. */
@@ -214,11 +239,15 @@ const headshotAt = () => {
   });
   updateBullets(0.016);
 };
+// Derived from the table, so retuning hard cannot silently invalidate this.
+const needed = headShots(types.shambler, 'hard');
+for (let i = 1; i < needed; i++) {
+  headshotAt();
+  assert(`hard: headshot ${i} of ${needed} wounds but does not kill`,
+    stateModule.state.zombies.length === 1 && victim.headHp === needed - i);
+}
 headshotAt();
-assert('hard: first headshot wounds but does not kill',
-  stateModule.state.zombies.length === 1 && victim.headHp === 1);
-headshotAt();
-assert('hard: second headshot kills', stateModule.state.zombies.length === 0);
+assert(`hard: headshot ${needed} kills`, stateModule.state.zombies.length === 0);
 
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

@@ -18,8 +18,7 @@ function render() {
   const cards = Object.entries(difficulties).map(([id, mode]) => `
     <button class="difficulty ${id === state.difficulty ? 'selected' : ''}" data-difficulty="${id}">
       <strong>${mode.name}</strong>
-      <em>${mode.tagline}</em>
-      <small>${mode.copy}</small>
+      <em>${mode.blurb}</em>
     </button>`).join('');
 
   showOverlay(`
