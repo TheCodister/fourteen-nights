@@ -56,20 +56,66 @@ export function buyWeapon(id) {
   return true;
 }
 
-export function equip(id, slot) {
-  const other = slot === 0 ? 1 : 0;
-  if (state.weapons[other] === id) state.weapons[other] = null;
-  state.weapons[slot] = id;
-  state.selected = slot;
+/**
+ * Where a weapon currently lives.
+ * @returns {{kind:'player', slot:number}|{kind:'survivor', id:string}|{kind:'pool'}}
+ */
+export function holderOf(id) {
+  const slot = state.weapons.indexOf(id);
+  if (slot >= 0) return { kind: 'player', slot };
+  const entry = Object.entries(state.survivorLoadout).find(([, held]) => held === id);
+  return entry ? { kind: 'survivor', id: entry[0] } : { kind: 'pool' };
 }
 
-/** Assigning a gun to a survivor takes it out of the player's hands. */
-export function assignSurvivorWeapon(survivorId, id) {
-  state.survivorLoadout[survivorId] = id;
-  if (id === STARTING_WEAPON) return;
-  state.weapons = state.weapons.map((held) => (held === id ? null : held));
-  if (!state.weapons[0]) {
-    state.weapons[0] = STARTING_WEAPON;
-    state.selected = 0;
+/**
+ * Moves a weapon to `target`, vacating wherever it was. Every non-Pistol weapon
+ * is exclusive, so this is a move and never a copy — which is what lets the UI
+ * treat slots as places a gun can be dragged into rather than a set of
+ * independent dropdowns that can disagree with each other.
+ *
+ * The Pistol is standard issue and exempt: any number of hands can hold one.
+ *
+ * @param {{kind:'player', slot:number}|{kind:'survivor', id:string}|{kind:'pool'}} target
+ */
+export function moveWeapon(id, target) {
+  if (!state.armory.includes(id)) return false;
+
+  if (id !== STARTING_WEAPON) {
+    state.weapons = state.weapons.map((held) => (held === id ? null : held));
+    for (const [survivorId, held] of Object.entries(state.survivorLoadout)) {
+      if (held === id) delete state.survivorLoadout[survivorId];
+    }
   }
+
+  if (target.kind === 'player') {
+    const other = target.slot === 0 ? 1 : 0;
+    if (state.weapons[other] === id) state.weapons[other] = null;
+    state.weapons[target.slot] = id;
+    state.selected = target.slot;
+  } else if (target.kind === 'survivor') {
+    state.survivorLoadout[target.id] = id;
+  }
+  // 'pool' needs no placement — vacating above already freed it.
+
+  normalizeLoadout();
+  return true;
+}
+
+/** Hands a survivor back to standard-issue Pistol. */
+export function unassignSurvivor(survivorId) {
+  delete state.survivorLoadout[survivorId];
+}
+
+export function clearPlayerSlot(slot) {
+  state.weapons[slot] = null;
+  normalizeLoadout();
+}
+
+/** Slot 0 always holds something, and `selected` always points at a real gun. */
+function normalizeLoadout() {
+  if (!state.weapons[0]) {
+    state.weapons[0] = state.weapons[1] || STARTING_WEAPON;
+    if (state.weapons[1] === state.weapons[0]) state.weapons[1] = null;
+  }
+  if (!state.weapons[state.selected]) state.selected = 0;
 }

@@ -1,17 +1,30 @@
-/* Shop, player loadout and survivor weapon assignment. These three screens
-   navigate into each other, so they share a module. */
+/* Shop and the loadout board.
+
+   The board replaces what used to be two screens — a player loadout with
+   SET PRIMARY / SET SECONDARY buttons and a separate survivor page of dropdowns.
+   Assigning a gun meant visiting both, because either screen could claim the
+   same weapon and you had to re-equip by hand afterwards.
+
+   Now every owned weapon lives in exactly one place: the rack, one of your two
+   slots, or a survivor's hands. Drag it where you want it — game/loadout.js
+   `moveWeapon` vacates the old spot, so nothing needs reassigning.
+
+   Drag-and-drop never fires on touch, so every drag has a tap equivalent: tap a
+   weapon to pick it up, tap a destination to put it down. */
 import { state } from '../../core/state.js';
 import { weapons, STARTING_WEAPON } from '../../data/weapons.js';
 import { startNight } from '../../game/night.js';
 import {
-  priceFor, buyWeapon, equip, isAssignedToSurvivor, survivorWeapon, assignSurvivorWeapon
+  priceFor, buyWeapon, holderOf, moveWeapon, unassignSurvivor, clearPlayerSlot, survivorWeapon
 } from '../../game/loadout.js';
 import { elements, showOverlay, pad } from '../dom.js';
 
 const beginLabel = () => `BEGIN NIGHT ${pad(state.night)}`;
 
+/** Weapon picked up by tapping, awaiting a destination. Cleared once it lands. */
+let picked = null;
+
 export function shopScreen() {
-  const equipped = state.weapons.filter(Boolean).map((id) => weapons[id].name).join(' / ');
   const cards = Object.entries(weapons).map(([id, w]) => {
     const price = priceFor(w);
     const owned = state.armory.includes(id);
@@ -24,81 +37,143 @@ export function shopScreen() {
 
   showOverlay(`
     <div class="overline">NIGHT ${pad(state.night)} ARMORY</div>
-    <h2>BUY ONCE. EQUIP ANYTIME.</h2>
-    <p><b style="color:#c8ff58">$${state.cash}</b> available &nbsp; | &nbsp; equipped: ${equipped || 'PISTOL'}</p>
+    <h2>BUY ONCE. KEEP FOREVER.</h2>
+    <p><b style="color:#c8ff58">$${state.cash}</b> available &nbsp; | &nbsp;
+       ${state.armory.length} weapon${state.armory.length === 1 ? '' : 's'} in the rack</p>
     <div class="shop-grid">${cards}</div>
-    <button class="action secondary" id="loadout">PLAYER LOADOUT</button>
-    <button class="action secondary" id="survivorLoadout">SURVIVOR WEAPONS</button>
+    <button class="action secondary" id="loadout">ARRANGE LOADOUT</button>
     <button class="action" id="continue">${beginLabel()}</button>
-  `, { loadout: equipScreen, survivorLoadout: survivorLoadoutScreen, continue: startNight });
+  `, { loadout: loadoutScreen, continue: startNight });
 
   elements.overlay.querySelectorAll('[data-weapon]').forEach((button) => {
     button.onclick = () => {
-      if (buyWeapon(button.dataset.weapon)) equipScreen();
+      if (buyWeapon(button.dataset.weapon)) shopScreen();
     };
   });
 }
 
-export function equipScreen() {
-  const entries = state.armory.map((id) => {
-    const w = weapons[id];
-    const primary = state.weapons[0] === id;
-    const secondary = state.weapons[1] === id;
-    const loaned = isAssignedToSurvivor(id);
-    return `<div class="armory-item">
-      <strong>${w.name}</strong>
-      <small>${loaned ? 'ASSIGNED TO SURVIVOR' : `${w.mag} RDS · ${w.damage} DMG`}</small>
-      <div>
-        <button data-equip="${id}" data-slot="0" ${primary || loaned ? 'disabled' : ''}>${primary ? 'PRIMARY' : 'SET PRIMARY'}</button>
-        <button data-equip="${id}" data-slot="1" ${secondary || primary || loaned ? 'disabled' : ''}>${secondary ? 'SECONDARY' : 'SET SECONDARY'}</button>
-      </div>
-    </div>`;
-  }).join('');
-
+export function loadoutScreen() {
   showOverlay(`
-    <div class="overline">PERSISTENT ARMORY — ${state.armory.length} OWNED</div>
-    <h2>SET YOUR TWO-GUN LOADOUT.</h2>
-    <p>Primary: <b style="color:#ffcf54">${weapons[state.weapons[0]].name}</b>
-       &nbsp;|&nbsp; Secondary: <b style="color:#ffcf54">${state.weapons[1] ? weapons[state.weapons[1]].name : 'EMPTY'}</b></p>
-    <div class="armory-grid">${entries}</div>
+    <div class="overline">LOADOUT — DRAG A WEAPON, OR TAP IT THEN TAP A SLOT</div>
+    <h2>WHO CARRIES WHAT.</h2>
+    <div class="board">
+      <div class="rack-side">
+        <span class="board-label">THE RACK</span>
+        <div class="rack drop-zone" data-drop="pool">${rackCards()}</div>
+      </div>
+      <div class="slots-side">
+        <span class="board-label">YOU</span>
+        <div class="slot-row">${playerSlot(0, 'PRIMARY')}${playerSlot(1, 'SECONDARY')}</div>
+        <span class="board-label">SURVIVORS</span>
+        <div class="survivor-slots">${survivorSlots()}</div>
+      </div>
+    </div>
     <button class="action secondary" id="backShop">BACK TO SHOP</button>
     <button class="action" id="beginFromLoadout">${beginLabel()}</button>
   `, { backShop: shopScreen, beginFromLoadout: startNight });
 
-  elements.overlay.querySelectorAll('[data-equip]').forEach((button) => {
-    button.onclick = () => {
-      equip(button.dataset.equip, Number(button.dataset.slot));
-      equipScreen();
+  wireBoard();
+}
+
+/* Only unheld weapons sit in the rack, so a gun is never shown twice. The Pistol
+   is the exception: standard issue, always available to everyone. */
+function rackCards() {
+  const loose = state.armory.filter((id) => id === STARTING_WEAPON || holderOf(id).kind === 'pool');
+  if (!loose.length) return '<p class="board-empty">Every weapon is assigned.</p>';
+  return loose.map((id) => weaponCard(id, id === STARTING_WEAPON ? 'STANDARD ISSUE' : '')).join('');
+}
+
+function weaponCard(id, note = '') {
+  const w = weapons[id];
+  return `<div class="weapon-card ${picked === id ? 'picked' : ''}" draggable="true" data-weapon-card="${id}">
+    <strong>${w.name}</strong>
+    <small>${note || `${w.mag} RDS · ${w.damage} DMG`}</small>
+  </div>`;
+}
+
+function playerSlot(slot, label) {
+  const id = state.weapons[slot];
+  return `<div class="drop-slot drop-zone ${id ? 'filled' : ''}" data-drop="player:${slot}">
+    <span class="slot-title">${label}</span>
+    ${id ? weaponCard(id) : '<p class="slot-hint">empty</p>'}
+    ${id && slot === 1 ? '<button class="slot-clear" data-clear="player:1">×</button>' : ''}
+  </div>`;
+}
+
+function survivorSlots() {
+  if (!state.survivors.length) {
+    return '<p class="board-empty">No survivors yet. Spend dawn hours searching.</p>';
+  }
+  return state.survivors.map((survivor) => {
+    const id = survivorWeapon(survivor);
+    const custom = id !== STARTING_WEAPON;
+    return `<div class="drop-slot drop-zone survivor ${custom ? 'filled' : ''}" data-drop="survivor:${survivor.id}">
+      <span class="slot-title">${survivor.name}</span>
+      ${weaponCard(id, custom ? '' : 'STANDARD ISSUE')}
+      ${custom ? `<button class="slot-clear" data-clear="survivor:${survivor.id}">×</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/** `player:1` / `survivor:mechanic` / `pool` → a moveWeapon target. */
+function parseTarget(token) {
+  if (token === 'pool') return { kind: 'pool' };
+  const [kind, rest] = token.split(':');
+  return kind === 'player' ? { kind: 'player', slot: Number(rest) } : { kind: 'survivor', id: rest };
+}
+
+function wireBoard() {
+  const overlay = elements.overlay;
+
+  overlay.querySelectorAll('[data-weapon-card]').forEach((card) => {
+    const id = card.dataset.weaponCard;
+    card.ondragstart = (event) => {
+      picked = id;
+      event.dataTransfer?.setData('text/plain', id);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      card.classList.add('dragging');
+    };
+    card.ondragend = () => card.classList.remove('dragging');
+    // Tap path: pick up, or put the same weapon back down.
+    card.onclick = (event) => {
+      event.stopPropagation();
+      picked = picked === id ? null : id;
+      loadoutScreen();
+    };
+  });
+
+  overlay.querySelectorAll('[data-drop]').forEach((zone) => {
+    zone.ondragover = (event) => {
+      event.preventDefault();
+      zone.classList.add('drop-hover');
+    };
+    zone.ondragleave = () => zone.classList.remove('drop-hover');
+    zone.ondrop = (event) => {
+      event.preventDefault();
+      zone.classList.remove('drop-hover');
+      // Fall back to `picked`: some browsers withhold dataTransfer on drop.
+      const id = event.dataTransfer?.getData('text/plain') || picked;
+      if (id) drop(id, zone.dataset.drop);
+    };
+    zone.onclick = () => {
+      if (picked) drop(picked, zone.dataset.drop);
+    };
+  });
+
+  overlay.querySelectorAll('[data-clear]').forEach((button) => {
+    button.onclick = (event) => {
+      event.stopPropagation();
+      const target = parseTarget(button.dataset.clear);
+      if (target.kind === 'survivor') unassignSurvivor(target.id);
+      else clearPlayerSlot(target.slot);
+      picked = null;
+      loadoutScreen();
     };
   });
 }
 
-export function survivorLoadoutScreen() {
-  const rows = state.survivors.map((survivor) => {
-    const current = survivorWeapon(survivor);
-    const options = [STARTING_WEAPON, ...state.armory.filter((id) => id !== STARTING_WEAPON)]
-      .filter((id) => id === current || (!state.weapons.includes(id) && !isAssignedToSurvivor(id, survivor.id)))
-      .map((id) => `<option value="${id}" ${id === current ? 'selected' : ''}>${weapons[id].name}</option>`)
-      .join('');
-    return `<label class="survivor-loadout">
-      <span><strong>${survivor.name}</strong><small>DEFAULT: PISTOL · 40–60% ACCURACY</small></span>
-      <select data-survivor-weapon="${survivor.id}">${options}</select>
-    </label>`;
-  }).join('') || '<p>No survivors yet. Allocate dawn hours to searching.</p>';
-
-  showOverlay(`
-    <div class="overline">SURVIVOR WEAPONS</div>
-    <h2>ASSIGN THE SPARE GUNS.</h2>
-    <p>Survivors automatically reload. A custom weapon can only be held by one person, while Pistols remain standard issue.</p>
-    <div class="survivor-loadout-list">${rows}</div>
-    <button class="action secondary" id="backToArmory">BACK TO ARMORY</button>
-    <button class="action" id="beginWithTeam">${beginLabel()}</button>
-  `, { backToArmory: shopScreen, beginWithTeam: startNight });
-
-  elements.overlay.querySelectorAll('[data-survivor-weapon]').forEach((select) => {
-    select.onchange = () => {
-      assignSurvivorWeapon(select.dataset.survivorWeapon, select.value);
-      survivorLoadoutScreen();
-    };
-  });
+function drop(id, token) {
+  moveWeapon(id, parseTarget(token));
+  picked = null;
+  loadoutScreen();
 }

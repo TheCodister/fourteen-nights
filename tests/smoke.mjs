@@ -280,5 +280,67 @@ for (let i = 1; i < needed; i++) {
 headshotAt();
 assert(`hard: headshot ${needed} kills`, stateModule.state.zombies.length === 0);
 
+/* Loadout moves: a non-Pistol weapon lives in exactly one place, so dropping it
+   somewhere new must vacate the old spot with no manual reassignment. */
+const loadout = await import('../src/game/loadout.js');
+const st = stateModule.state;
+st.armory = ['pistol', 'smg', 'ar'];
+st.weapons = ['pistol', null];
+st.survivorLoadout = {};
+st.survivors = [{ id: 'mechanic', name: 'Mechanic Mae' }, { id: 'nurse', name: 'Nurse Nia' }];
+
+loadout.moveWeapon('smg', { kind: 'player', slot: 1 });
+assert('drop onto a player slot equips it', st.weapons[1] === 'smg');
+
+loadout.moveWeapon('smg', { kind: 'survivor', id: 'mechanic' });
+assert('handing a carried weapon to a survivor frees the player slot',
+  st.survivorLoadout.mechanic === 'smg' && st.weapons[1] === null);
+
+loadout.moveWeapon('smg', { kind: 'survivor', id: 'nurse' });
+assert('moving between survivors leaves only one holder',
+  st.survivorLoadout.nurse === 'smg' && st.survivorLoadout.mechanic === undefined);
+
+loadout.moveWeapon('smg', { kind: 'player', slot: 0 });
+assert('taking a survivor weapon back clears them',
+  st.weapons[0] === 'smg' && st.survivorLoadout.nurse === undefined);
+assert('holderOf reports the player slot', loadout.holderOf('smg').slot === 0);
+
+loadout.moveWeapon('smg', { kind: 'pool' });
+assert('dropping on the rack unassigns entirely', loadout.holderOf('smg').kind === 'pool');
+assert('slot 0 never ends up empty', !!st.weapons[0]);
+
+// The Pistol is standard issue: many hands may hold one at once.
+loadout.moveWeapon('pistol', { kind: 'survivor', id: 'mechanic' });
+loadout.moveWeapon('pistol', { kind: 'player', slot: 0 });
+assert('the Pistol is exempt from exclusivity',
+  st.weapons[0] === 'pistol' && st.survivorLoadout.mechanic === 'pistol');
+
+/* Survivor fire rate: the handicap must scale with the weapon, so a fast weapon
+   stays fast in their hands. Sampled, since the gap carries jitter. */
+const { createBots, updateBots } = await import('../src/systems/bots.js');
+const shotsPerSecond = (weaponId) => {
+  st.survivors = [{ id: 'mechanic', name: 'Mechanic Mae' }];
+  st.survivorLoadout = { mechanic: weaponId };
+  st.bots = createBots();
+  st.zombies = [{ x: 700, y: 500, r: 25, hp: 999, maxHp: 999, headHp: 99, color: '#8cab6a', attackCd: 0, bob: 0 }];
+  st.bullets.length = 0;
+  st.bots[0].shotCd = 0;
+  let shots = 0;
+  for (let i = 0; i < 625; i++) { // 10 seconds
+    const before = st.bullets.length;
+    updateBots(0.016);
+    if (st.bullets.length > before) shots++;
+    st.bullets.length = 0;
+  }
+  return shots / 10;
+};
+const smgRate = shotsPerSecond('smg');
+const pistolRate = shotsPerSecond('pistol');
+/* Sustained rates, so reload downtime is included: an SMG burns 30 rounds in
+   ~3.6s then reloads 2s. Burst rate is ~8/s; sustained lands near 6/s, against
+   ~2.5/s before the handicap became multiplicative. */
+assert(`survivor SMG sustains a fast rate (${smgRate.toFixed(1)}/s, was ~2.5/s)`, smgRate > 5);
+assert('survivor SMG clearly outpaces their Pistol', smgRate > pistolRate * 2.5);
+
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

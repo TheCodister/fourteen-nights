@@ -87,9 +87,9 @@ Survivors stand behind the barricade and fire automatically.
 
 - Their accuracy is intentionally imperfect: **40–60%**.
 - Each starts with a Pistol and reloads after emptying its magazine.
-- In the armory, choose **Survivor Weapons** to assign a spare owned weapon to a specific survivor.
 - An assigned weapon supplies that survivor's own damage, fire rate, projectile speed, pellets/spread, piercing, and on-screen gun design.
-- A non-Pistol weapon is exclusive: assigning it to a survivor removes it from the player loadout until reassigned.
+- They are slower on the trigger than you are, but only by a **fixed multiple of the weapon's own fire rate** (~1.4×). Hand a survivor an SMG and it still rips. The handicap used to include a flat delay per shot, which cost an SMG 3.9× its rate while a shotgun lost 1.7× — automatics felt broken in survivor hands.
+- A non-Pistol weapon is exclusive: only one holder on the whole team, player included. The Pistol is standard issue and exempt.
 
 ## Armory and progression
 
@@ -97,9 +97,12 @@ Kill zombies to earn cash during a run. Weapons are bought once per run and reta
 
 At dawn, open the armory to:
 
-1. Buy weapons.
-2. Open **Player Loadout** to assign two carried weapons.
-3. Open **Survivor Weapons** to distribute spare guns to your team.
+1. Buy weapons in the shop.
+2. Open **Arrange Loadout** for the board.
+
+The board shows every owned weapon in exactly one place: **the rack**, one of **your two slots**, or a **survivor's hands**. Drag a weapon where you want it and the old spot empties itself — taking a gun back off a survivor, or handing one over, needs no second step.
+
+Drag-and-drop does not fire on touch devices, so every drag has a tap equivalent: **tap a weapon to pick it up, then tap a destination**. The `×` on a filled slot returns that weapon to the rack, and your primary slot always holds something.
 
 Completed nights also award permanent **Scrap**. Spend Scrap from the title screen on upgrades including barricade durability, reload speed, movement speed, headshot income, better survivor searches, and shop discounts.
 
