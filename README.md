@@ -38,7 +38,7 @@ Weapons have infinite reserve ammunition but finite magazines. Reloading starts 
 
 - Zombies arrive from the right and attack the barricade first.
 - A Pistol body shot deals 20 damage. On Easy a basic 100-health zombie needs **five body shots**, and headshots kill regular zombies instantly — see the difficulty table below for the other tiers.
-- Aim for the enlarged head hit zone.
+- The head hit zone is a circle of **0.55×** the zombie's body radius, sitting above the body centre. It is still slightly larger than the drawn head, so a shot that visibly connects always registers — but it is tighter than it used to be, and clipping the edge of the skull no longer counts.
 - Each of your own headshots adds **+5% cash**, up to **×2.00**. One of your body-shot kills drops the streak to zero; survivor kills never affect it. The streak resets at the start of every night.
 - Spitters lob acid at where you were standing, marked by a ring that closes on the landing spot. Whatever a spit hits leaves a puddle that costs **14 health per second** while you stand in it, so the safe yard shrinks as they work it over.
 - If the barricade breaks, the night is not automatically lost. Kite the zombies inside the protected zone—but if one reaches you, the run ends.
@@ -59,12 +59,14 @@ Counts below are Pistol shots (20 damage, 15 through armour):
 | Tough (armoured) | 12 body / 2 headshots | 10 body / 3 headshots | 8 body / 4 headshots | 8 body / 4 headshots |
 | The Foreman | 8 headshots | 10 headshots | 12 headshots | 12 headshots |
 | The Passenger | 10 headshots | 13 headshots | 16 headshots | 16 headshots |
-| Cash and Scrap | ×1 | ×1.25 | ×1.5 | ×1.8 |
+| Cash and Scrap | ×1 | ×1.2 | ×1.5 | ×1.5 |
 | Horde size | — | — | — | +1 per wave and a 25% faster spawn clock, from night 2 |
 
 **Nightmare is Hard's durability with far more bodies.** Night one is identical to Hard; from night two the extra wave size and tighter cadence land between 59% and 168% more zombies per night. The two tiers share one `HARD_DURABILITY` object in the data file, so they cannot drift apart when either is retuned.
 
 Health is scaled by multiplier, not rewritten per type, so the roster keeps its shape — a runner stays faster and frailer than a spitter at every tier.
+
+**Payouts did not move when the ladder shifted up.** Tier one still pays ×1, tier two ×1.2, tier three ×1.5 — the same cash and Scrap as before, for now-tougher zombies. Nightmare shares Hard's payout as well as its durability, since its extra bodies already mean more kills per night.
 
 Wave pacing and barricade damage are identical across Easy, Normal and Hard; only Nightmare touches them.
 

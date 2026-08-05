@@ -22,6 +22,12 @@
    DURABILITY object rather than restating the numbers — the two cannot drift
    apart by accident. */
 
+/* Payouts deliberately did NOT move when the ladder shifted up: tier one still
+   pays x1, tier two x1.2, tier three x1.5. Nightmare shares Hard's payout as
+   well as its durability — its extra bodies already mean more kills per night,
+   so the horde is its own reward. */
+const HARD_REWARD = 1.5;
+
 /** Shared by Hard and Nightmare: identical zombie durability by construction. */
 const HARD_DURABILITY = {
   hpMultiplier: 1.8,
@@ -47,19 +53,19 @@ export const difficulties = {
     armorHpMultiplier: 0.68,
     headHp: { normal: 2, armored: 3 },
     bossHeadMultiplier: 1.65,
-    reward: 1.25
+    reward: 1.2
   },
   hard: {
     name: 'HARD',
     blurb: 'The horde is on another level. Only real skill survives this.',
     ...HARD_DURABILITY,
-    reward: 1.5
+    reward: HARD_REWARD
   },
   nightmare: {
     name: 'NIGHTMARE',
     blurb: 'Are you nuts?',
     ...HARD_DURABILITY,
-    reward: 1.8,
+    reward: HARD_REWARD,
     /* Same bodies as Hard, far more of them. From night two on, every wave
        carries an extra zombie and the spawn clock runs a quarter faster. */
     horde: { fromNight: 2, batchBonus: 1, intervalScale: 0.75 }

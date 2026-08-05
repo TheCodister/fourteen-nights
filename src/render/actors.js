@@ -5,9 +5,8 @@
    lying over, because the legs and head swing with the mouse.
 
    Zombie proportions are pinned to the hit zones in systems/bullets.js: the head
-   is drawn at -0.68r with radius 0.5r against a 0.62r head circle, and the torso
-   stays inside the body radius r. Move the art here and aiming stops matching the
-   silhouette. */
+   is drawn at -0.68r, inside that file's HEAD circle, and the torso stays within
+   the body radius r. Move the art here and aiming stops matching the silhouette. */
 import { ACTOR_SCALE } from '../config.js';
 import { state } from '../core/state.js';
 import { mouse } from '../core/input.js';
@@ -49,10 +48,11 @@ const Z = {
   chestW: 0.64, waistW: 0.44, waistY: 0.52,
   legLen: 0.5, legW: 0.16,
   armY: -0.24, armLen: 0.88, armW: 0.13,
-  /** headR stays under the 0.62r head hit circle, so the visible head is always
-      forgiving to aim at rather than larger than its own hitbox. */
+  /** headR stays under HEAD.radius in systems/bullets.js, so the visible head is
+      always forgiving to aim at rather than larger than its own hitbox. */
   headY: -0.68, headR: 0.44, headX: 0.06
 };
+export { Z };
 
 function drawShadow(x, y, rx, alpha = 0.3) {
   ctx.save();

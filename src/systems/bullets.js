@@ -5,7 +5,12 @@ import { state } from '../core/state.js';
 import { bloodHit } from './particles.js';
 import { killZombie } from './zombies.js';
 
-const HEAD = { offset: 0.68, radius: 0.62 };
+/* Head hit circle, in fractions of the body radius. `radius` must stay at or
+   above the drawn head (Z.headR in render/actors.js, currently 0.44r) — go under
+   it and shots that visibly strike the head start missing, which reads as a bug
+   rather than as difficulty. The smoke test asserts this bound. */
+const HEAD = { offset: 0.68, radius: 0.55 };
+export { HEAD };
 const ARMOR_DAMAGE_SCALE = 0.75;
 
 export function updateBullets(dt) {

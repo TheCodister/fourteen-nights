@@ -205,6 +205,11 @@ const durability = (d) => JSON.stringify([d.hpMultiplier, d.armorHpMultiplier, d
 assert('nightmare durability is identical to hard',
   durability(difficulties.nightmare) === durability(difficulties.hard));
 
+/* Payouts did not move when the ladder shifted up; Nightmare shares Hard's. */
+assert('rewards stay x1 / x1.2 / x1.5, nightmare matching hard',
+  difficulties.easy.reward === 1 && difficulties.normal.reward === 1.2
+  && difficulties.hard.reward === 1.5 && difficulties.nightmare.reward === difficulties.hard.reward);
+
 const { runSpawnDirector } = await import('../src/systems/spawner.js');
 /** Zombies produced by one wave on `night` at the given difficulty. */
 const waveSize = (id, night) => {
@@ -239,6 +244,32 @@ const headshotAt = () => {
   });
   updateBullets(0.016);
 };
+/* Head hitbox: tightened to 0.55r, and it must never shrink below the drawn head
+   or shots that visibly hit the head would miss. */
+const { HEAD } = await import('../src/systems/bullets.js');
+const { Z } = await import('../src/render/actors.js');
+assert('head hitbox is not smaller than the drawn head', HEAD.radius >= Z.headR);
+
+/** Fires at a horizontal offset from the head centre. Returns headHp afterwards. */
+const shotOffsetFromHead = (fraction) => {
+  stateModule.state.bullets.length = 0;
+  const before = victim.headHp;
+  stateModule.state.bullets.push({
+    x: victim.x + victim.r * fraction, y: victim.y - victim.r * HEAD.offset,
+    vx: 0, vy: 0, damage: 20, pierce: 0, life: 1, bot: false,
+    color: '#fff', trail: 10, projectileSize: 2
+  });
+  updateBullets(0.016);
+  return { before, after: victim.headHp };
+};
+let probe = shotOffsetFromHead(0.5);
+assert('a shot 0.50r from head centre still counts as a headshot', probe.after === probe.before - 1);
+victim.headHp = 3;
+probe = shotOffsetFromHead(0.6);
+assert('a shot 0.60r out now misses the head (was a hit at 0.62r)', probe.after === probe.before);
+victim.headHp = 3;
+victim.hp = 180;
+
 // Derived from the table, so retuning hard cannot silently invalidate this.
 const needed = headShots(types.shambler, 'hard');
 for (let i = 1; i < needed; i++) {
