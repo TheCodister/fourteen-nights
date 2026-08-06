@@ -27,6 +27,19 @@ Then visit `http://localhost:8080`.
 
 Weapons have infinite reserve ammunition but finite magazines. Reloading starts automatically when a magazine is empty, and a bar above the weapon slots shows how much of it is left.
 
+## Sound
+
+Everything is synthesised at runtime with Web Audio — there are no audio files, so the project keeps its no-build-step, no-dependency shape and every sound is a tunable recipe rather than a fixed clip.
+
+- **Every weapon has its own voice.** Gunfire is built from a low sine sweep for the body thump, a filtered noise burst for the crack, and decay length for the size of the room. Those three knobs are what separate the hollow *thoomp* of a Grenade Launcher (spectral centroid ~750 Hz) from the sharp crack of a Hunting Rifle (~8.7 kHz) or the pure whoosh of a Molotov (~12 kHz).
+- **The horde is audible before it is visible.** Zombies groan at random, panned to where they stand, and the gap between groans shortens as the horde grows. Bites, deaths, headshots, a Pouncer's screech and a Bloater's burst all have their own cues.
+- **A procedural score**, not a loop file: a 16-step sequencer in D minor over a Dm–Bb–F–C progression. The menu mood is slow and hollow; nights add a driving kick, hats and an arpeggio.
+- **Two toggles** in the top bar, for sound effects and music separately.
+
+Browsers only allow audio to start inside a user gesture, so the graph is built on your first click. Sound and music both default to on; `SOUND: N/A` means the browser exposes no AudioContext at all.
+
+Tune fire sounds and cues in `src/data/sounds.js`, the score in `src/core/music.js`, and the engine in `src/core/audio.js`.
+
 ## Reading the HUD
 
 - Both carried weapons stay on screen with their magazines. The idle slot is dimmed; a magazine at or below a quarter turns red.
@@ -155,7 +168,8 @@ src/
   main.js             entry point: binds input + UI, starts the loop
   config.js           arena dimensions, night length, world bounds
   data/               balance tables — weapons, zombies, survivors, upgrades
-  core/               state, persistence, events, input, audio, frame loop
+  core/               state, persistence, events, input, frame loop,
+                      audio engine + sfx cues + procedural score
   systems/            per-frame simulation: combat, bullets, throwables, zombies,
                       bots, acid, zones, particles
   game/               orchestration: run, night, dawn, loadout
@@ -190,6 +204,8 @@ Layer rule, enforced by convention: `config`/`data` import nothing, `core` impor
 | Change wave pacing | `src/systems/spawner.js` |
 | Change night flow or endings | `src/game/night.js` |
 | Add a screen | `src/ui/screens/`, wired in `src/ui/index.js` |
+| Retune a weapon's sound or add a cue | `src/data/sounds.js` |
+| Change the score | `src/core/music.js` (`SONGS`) |
 
 ## Development
 

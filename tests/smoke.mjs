@@ -488,5 +488,41 @@ chewer.hp = 400;
 zombiesSystem.updateZombies(0.4, false);
 assert('no fortification means no contact damage', chewer.hp === 400);
 
+/* Audio must degrade to a no-op where there is no AudioContext (this harness,
+   and any browser that blocks it), and every recipe must be well formed. */
+const audio = await import('../src/core/audio.js');
+const music = await import('../src/core/music.js');
+const { SFX: cues } = await import('../src/core/sfx.js');
+const { WEAPON_SOUNDS, SOUNDS: allSounds } = await import('../src/data/sounds.js');
+const { weapons: roster } = await import('../src/data/weapons.js');
+
+assert('audio reports itself unavailable without an AudioContext', !audio.audioAvailable());
+let audioThrew = false;
+try {
+  cues.shot('lmg', 400);
+  cues.kill(true, 300);
+  cues.groan(900);
+  cues.explosion(500);
+  cues.barricadeBreak();
+  audio.playSound(WEAPON_SOUNDS.pistol, { pan: 0.5 });
+  music.playMusic('night');
+  music.stopMusic();
+} catch {
+  audioThrew = true;
+}
+assert('cues are silent no-ops when audio is unavailable', !audioThrew);
+
+assert('every weapon has its own fire sound',
+  Object.keys(roster).every((id) => !!WEAPON_SOUNDS[id]));
+assert('no two weapons share a sound recipe',
+  new Set(Object.values(WEAPON_SOUNDS).map((s) => JSON.stringify(s))).size === Object.keys(WEAPON_SOUNDS).length);
+
+const everyRecipe = [...Object.values(WEAPON_SOUNDS), ...Object.values(allSounds)];
+assert('every recipe has at least one layer', everyRecipe.every((s) => s.layers && s.layers.length));
+assert('every layer is a noise or oscillator source',
+  everyRecipe.every((s) => s.layers.every((l) => l.src === 'noise' || l.src === 'osc')));
+assert('every layer decays in finite time',
+  everyRecipe.every((s) => s.layers.every((l) => (l.decay ?? 0.12) > 0 && (l.decay ?? 0.12) < 3)));
+
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

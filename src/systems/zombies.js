@@ -1,7 +1,7 @@
 /* Zombie movement, barricade chewing, spitter acid and death payouts. */
 import { BARRICADE_X, PLAYER_HIT_RADIUS, SPITTER_RANGE_X } from '../config.js';
 import { state } from '../core/state.js';
-import { SFX } from '../core/audio.js';
+import { SFX } from '../core/sfx.js';
 import { upgrades, streakMultiplier } from '../data/upgrades.js';
 import { difficultyOf } from '../data/difficulty.js';
 import { PERKS } from '../data/survivors.js';
@@ -34,7 +34,7 @@ export function killZombie(z, headshot = false, byBot = false) {
     else state.streak = 0;
   }
 
-  SFX.kill(headshot);
+  SFX.kill(headshot, z.x);
   const cashBonus = (hasSurvivor('accountant') ? PERKS.accountant.cashMultiplier : 1)
     * (headshot ? 1 + rank('clean') * upgrades.clean.step : 1)
     * streakMultiplier(state.streak)
@@ -115,6 +115,7 @@ function bleedOnFortifications(z, dt) {
    let one reach the barricade and killing it catches the front survivor row and
    anyone standing near the line. Kill it at range and it costs you nothing. */
 function burstBloater(z) {
+  SFX.burst(z.x);
   burst(z.x, z.y, '#9ccf4a', 26, 240);
   addZone('bile', z.x, z.y);
   state.shake = Math.max(state.shake, 11);
@@ -172,6 +173,7 @@ function huntSurvivors(z, dt) {
   if (Math.hypot(target.bot.x - z.x, target.bot.y - z.y) < z.r) {
     z.pinnedBot = target.bot;
     target.bot.pinnedBy = z;
+    SFX.screech(z.x);
     state.shake = Math.max(state.shake, 8);
   }
   return true;
@@ -185,9 +187,11 @@ function biteBarricade(z, dt) {
   z.attackCd = BITE.interval;
 
   state.barricade = Math.max(0, state.barricade - z.barr * BARRICADE_DPS_SCALE * BITE.interval);
+  SFX.bite(z.x);
   state.barrFlash = Math.min(1, state.barrFlash + (z.boss ? BITE.bossFlash : BITE.flash));
   state.shake = Math.max(state.shake, z.boss ? BITE.bossShake : BITE.shake);
   if (state.barricade === 0) {
+    SFX.barricadeBreak();
     state.barrFlash = 1;
     state.shake = Math.max(state.shake, BITE.breakShake);
   }

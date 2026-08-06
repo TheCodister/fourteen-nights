@@ -3,6 +3,7 @@
 import { NIGHT_LENGTH, FINAL_NIGHT, PLAYER_MAX_HP } from '../config.js';
 import { state, saveProgress } from '../core/state.js';
 import { emit, EVENTS } from '../core/events.js';
+import { SFX } from '../core/sfx.js';
 import { PERKS } from '../data/survivors.js';
 import { SCRAP } from '../data/upgrades.js';
 import { difficultyOf } from '../data/difficulty.js';
@@ -29,6 +30,7 @@ export function startNight() {
   state.scene = 'playing';
   state.elapsed = 0;
   state.spawnClock = SPAWN_START_DELAY;
+  state.groanClock = 1.5;
   state.zombies = [];
   state.bullets = [];
   state.acid = [];
@@ -50,6 +52,7 @@ export function startNight() {
   state.bossSpawned = false;
   state.bossKilled = false;
 
+  SFX.nightStart();
   emit(EVENTS.NIGHT_START, { night: state.night });
 }
 
@@ -88,6 +91,7 @@ export function updateNight(dt) {
   if (updateAcid(dt)) return endRun();
 
   updateParticles(dt);
+  groanAmbience(dt);
   state.shake = Math.max(0, state.shake - dt * SHAKE_DECAY);
   state.barrFlash = Math.max(0, state.barrFlash - dt * FLASH_DECAY);
 
@@ -100,6 +104,17 @@ export function updateNight(dt) {
 /** Scrap payouts carry the difficulty reward bonus, same as in-run cash. */
 function scrapReward(amount) {
   return Math.round(amount * difficultyOf(state.difficulty).reward);
+}
+
+/* One voice from a random zombie now and then, panned to where it stands. The
+   gap shortens as the horde grows, so pressure is audible before it is visible. */
+function groanAmbience(dt) {
+  state.groanClock -= dt;
+  if (state.groanClock > 0 || !state.zombies.length) return;
+  const z = state.zombies[Math.floor(Math.random() * state.zombies.length)];
+  SFX.groan(z.x);
+  const crowd = Math.max(0.4, 2.6 - state.zombies.length * 0.045);
+  state.groanClock = crowd * (0.6 + Math.random() * 0.8);
 }
 
 function surviveNight() {

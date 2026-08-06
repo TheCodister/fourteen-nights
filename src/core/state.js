@@ -64,6 +64,8 @@ export function createState() {
 
     elapsed: 0,
     spawnClock: 1,
+    /** Countdown to the next ambient horde groan. */
+    groanClock: 1.5,
     killed: 0,
     shake: 0,
     /** 0..1 pulse raised whenever the barricade is bitten; drives the vignette. */

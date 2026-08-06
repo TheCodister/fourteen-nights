@@ -8,6 +8,7 @@
 import { ACTOR_SCALE } from '../config.js';
 import { state } from '../core/state.js';
 import { emit, EVENTS } from '../core/events.js';
+import { SFX } from '../core/sfx.js';
 import { weapons } from '../data/weapons.js';
 import { BOT_ACCURACY, BOT_VITALS as BOT } from '../data/survivors.js';
 import { survivorWeapon } from '../game/loadout.js';
@@ -77,6 +78,7 @@ export function hurtBot(bot, amount) {
     bot.pinnedBy.pinnedBot = null;
     bot.pinnedBy = null;
   }
+  SFX.survivorDown(bot.x);
   emit(EVENTS.SURVIVOR_DOWN, { name: bot.survivor.name });
   return true;
 }
@@ -86,6 +88,7 @@ function loseSurvivor(bot) {
   state.survivors = state.survivors.filter((survivor) => survivor.id !== bot.survivor.id);
   state.bots = state.bots.filter((other) => other !== bot);
   if (bot.pinnedBy) bot.pinnedBy.pinnedBot = null;
+  SFX.survivorLost(bot.x);
   emit(EVENTS.SURVIVOR_LOST, { name: bot.survivor.name });
 }
 
@@ -122,6 +125,7 @@ export function updateBots(dt) {
 
     bot.aimAngle = angle;
     bot.ammo--;
+    SFX.shot(bot.weaponId, bot.x, true);
     fireWeapon(bot.x, bot.y, angle, w, ACTOR_SCALE, true, target.x, target.y);
     if (bot.ammo === 0) bot.reload = w.reload;
   }
@@ -139,6 +143,7 @@ function tendDowned(bot, dt) {
       bot.hp = Math.max(1, Math.round(bot.maxHp * BOT.reviveHp));
       bot.revive = 0;
       bot.shotCd = 0.4;
+      SFX.revive(bot.x);
       return;
     }
   } else {

@@ -6,6 +6,7 @@ export const elements = {
   hud: $('#hud'),
   status: $('#topStatus'),
   soundButton: $('#soundButton'),
+  musicButton: $('#musicButton'),
   night: $('#nightLabel'),
   timer: $('#timerLabel'),
   cash: $('#cashLabel'),

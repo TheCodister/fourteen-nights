@@ -18,6 +18,7 @@ import { startNight } from '../../game/night.js';
 import {
   priceFor, buyWeapon, buyFortification, holderOf, moveWeapon, unassignSurvivor, clearPlayerSlot, survivorWeapon
 } from '../../game/loadout.js';
+import { SFX } from '../../core/sfx.js';
 import { elements, showOverlay, pad } from '../dom.js';
 
 const beginLabel = () => `BEGIN NIGHT ${pad(state.night)}`;
@@ -49,14 +50,18 @@ export function shopScreen() {
 
   elements.overlay.querySelectorAll('[data-weapon]').forEach((button) => {
     button.onclick = () => {
-      if (buyWeapon(button.dataset.weapon)) shopScreen();
+      if (!buyWeapon(button.dataset.weapon)) return;
+      SFX.purchase();
+      shopScreen();
     };
   });
 
   const fortButton = elements.overlay.querySelector('#buyFort');
   if (fortButton) {
     fortButton.onclick = () => {
-      if (buyFortification()) shopScreen();
+      if (!buyFortification()) return;
+      SFX.purchase();
+      shopScreen();
     };
   }
 }

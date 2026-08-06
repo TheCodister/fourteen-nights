@@ -7,6 +7,7 @@
    not just the player, so a spitter left alive thins the line. */
 import { PLAYER_HIT_RADIUS, PLAYER_BOUNDS } from '../config.js';
 import { state } from '../core/state.js';
+import { SFX } from '../core/sfx.js';
 import { burst, bloodHit } from './particles.js';
 import { addZone, updateZones } from './zones.js';
 import { hurtBot } from './bots.js';
@@ -51,12 +52,14 @@ export function updateAcid(dt) {
     const landX = direct ? a.x : struck ? struck.x : a.tx;
     const landY = direct ? a.y : struck ? struck.y : a.ty;
     addZone('acid', landX, landY);
+    SFX.splash(landX);
     burst(landX, landY, '#c8ff58', 8, 70);
 
     if (struck) {
       hurtBot(struck, ACID.damage);
     } else if (direct) {
       state.player.hp -= ACID.damage;
+      SFX.hurt();
       burst(a.x, a.y, '#c8ff58', 10, 80);
       bloodHit(a.x, a.y, Math.atan2(a.ty - a.y0, a.tx - a.x0), false, state.player.y + 26);
       if (state.player.hp <= 0) return true;

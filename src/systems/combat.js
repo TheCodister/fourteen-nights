@@ -2,10 +2,10 @@
    survivor bots — fireWeapon() is the single place bullets are born. */
 import { ACTOR_SCALE } from '../config.js';
 import { state } from '../core/state.js';
-import { SFX } from '../core/audio.js';
+import { SFX } from '../core/sfx.js';
 import { mouse, consumeKey } from '../core/input.js';
 import { upgrades } from '../data/upgrades.js';
-import { weapon, weaponAmmo, setAmmo, rank } from '../game/loadout.js';
+import { weapon, weaponId, weaponAmmo, setAmmo, rank } from '../game/loadout.js';
 import { burst } from './particles.js';
 import { throwOrdnance } from './throwables.js';
 
@@ -56,9 +56,9 @@ export function shoot() {
   const w = weapon();
   if (state.reload > 0 || state.fireCd > 0 || weaponAmmo() <= 0) return;
   setAmmo(weaponAmmo() - 1);
-  SFX.shot(w);
   state.fireCd = w.fire;
   state.shake = Math.max(state.shake, w.heavy ? 7 : 2);
+  SFX.shot(weaponId(), state.player.x);
   const angle = Math.atan2(mouse.y - state.player.y, mouse.x - state.player.x);
   // Explosives land where the cursor is, so aiming one is aiming at the ground.
   fireWeapon(state.player.x, state.player.y, angle, w, ACTOR_SCALE, false, mouse.x, mouse.y);
@@ -79,7 +79,10 @@ export function serviceWeapons(dt) {
   state.fireCd = Math.max(0, state.fireCd - dt);
   if (state.reload > 0) {
     state.reload -= dt;
-    if (state.reload <= 0) setAmmo(weapon().mag);
+    if (state.reload <= 0) {
+      setAmmo(weapon().mag);
+      SFX.reloadDone();
+    }
   }
   if (weaponAmmo() === 0 && state.reload <= 0) reload();
   if (mouse.down) shoot();

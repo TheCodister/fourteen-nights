@@ -8,6 +8,7 @@
    the Bloater's own burst hurts your side. */
 import { W, H } from '../config.js';
 import { state } from '../core/state.js';
+import { SFX } from '../core/sfx.js';
 import { burst, mist } from './particles.js';
 import { addZone } from './zones.js';
 import { killZombie } from './zombies.js';
@@ -46,7 +47,10 @@ export function updateThrowables(dt) {
 
     if (o.progress < 1) continue;
     list.splice(i, 1);
-    if (o.kind === 'fire') addZone('fire', o.tx, o.ty, o.radius);
+    if (o.kind === 'fire') {
+      addZone('fire', o.tx, o.ty, o.radius);
+      SFX.ignite(o.tx);
+    }
     else detonate(o);
   }
 }
@@ -54,6 +58,7 @@ export function updateThrowables(dt) {
 /* Area damage with linear falloff. Credited as a non-player kill so a grenade
    cannot inflate the headshot streak. */
 function detonate(o) {
+  SFX.explosion(o.x);
   burst(o.x, o.y, '#ffd08a', 26, 300);
   burst(o.x, o.y, o.color, 18, 190);
   mist(o.x, o.y, 8, o.radius * 0.5);
