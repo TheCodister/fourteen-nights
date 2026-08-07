@@ -382,8 +382,8 @@ function drawHouse(dawn) {
   ctx.fillStyle = '#4c2c24';
   for (let y = wallTop + 12; y < base; y += 15) ctx.fillRect(x, y, w, 3);
 
-  drawRoof(x, w, apexY, eaveY, eaveOut, centerX);
   drawChimney(eaveY, apexY, centerX);
+  drawRoof(x, w, apexY, eaveY, eaveOut, centerX);
   drawWallDetail();
   drawWindow(HOUSE.x + 26, 302, true);
   drawWindow(HOUSE.x + 190, 302, false, dawn);
@@ -473,72 +473,45 @@ function drawRoof(x, w, apexY, eaveY, eaveOut, centerX) {
   ctx.fillRect(left, eaveY + 9, right - left, 3);
 }
 
+/* The stack is drawn BEFORE the roof, so the gable paints over its base and the
+   roof's own edge cuts it on the diagonal. That is what makes it read as coming
+   through the roof in flat, front-on art.
+
+   Painting it on top of the roof instead needs the base to land exactly on the
+   slope, and the earlier attempts at that both failed: the roof falls away to
+   the right, so a stack sized to the slope under its left edge hung half in the
+   sky, and at x=272 the roof's right edge is at x=272 — the entire column was
+   outside the triangle with one corner touching. Sitting behind, position only
+   has to satisfy "base is inside the roof", which the constant below does with
+   room to spare. */
 function drawChimney(eaveY, apexY, centerX) {
-  const roofLeft = HOUSE.x - HOUSE.eaveOut;
   const roofRight = HOUSE.x + HOUSE.w + HOUSE.eaveOut;
   const width = 34;
-  const chimneyX = centerX + 58;
-
-  /* Where the roof surface sits at a given x. The stack has to reach the slope
-     under its LOWER edge, not its upper one: the roof falls away to the right,
-     so sizing it to the left edge left the whole right half hanging in the sky. */
+  // Near the ridge, where the triangle is wide enough to hide the whole base.
+  const chimneyX = centerX + 20;
   const slopeAt = (px) => apexY + ((px - centerX) / (roofRight - centerX)) * (eaveY - apexY);
-  const topOfSlope = slopeAt(chimneyX);
-  const bottomOfSlope = slopeAt(chimneyX + width);
-  const top = topOfSlope - 62;
+  // Extend well past the slope; everything below it is covered by the roof.
+  const buried = slopeAt(chimneyX + width) + 26;
+  const top = slopeAt(chimneyX) - 58;
 
-  // Shadow down the slope, clipped to the gable so it cannot spill into the sky.
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(roofLeft, eaveY);
-  ctx.lineTo(centerX, apexY);
-  ctx.lineTo(roofRight, eaveY);
-  ctx.closePath();
-  ctx.clip();
-  ctx.globalAlpha = 0.26;
-  ctx.fillStyle = '#1b0f0c';
-  ctx.beginPath();
-  ctx.moveTo(chimneyX + width, topOfSlope);
-  ctx.lineTo(chimneyX + width + 46, bottomOfSlope + 30);
-  ctx.lineTo(chimneyX + width, bottomOfSlope + 14);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // Brick, buried a few pixels past the slope so no gap can open under it.
   ctx.fillStyle = '#241614';
-  ctx.fillRect(chimneyX - 2, top - 2, width + 4, bottomOfSlope - top + 6);
+  ctx.fillRect(chimneyX - 2, top - 2, width + 4, buried - top + 2);
   ctx.fillStyle = '#6f4032';
-  ctx.fillRect(chimneyX + 2, top + 2, width - 4, bottomOfSlope - top);
-  ctx.fillStyle = 'rgba(40,22,16,.4)';
-  for (let by = top + 12; by < bottomOfSlope; by += 13) ctx.fillRect(chimneyX + 2, by, width - 4, 2);
-  ctx.fillStyle = 'rgba(20,10,8,.22)';
-  ctx.fillRect(chimneyX + width - 9, top + 2, 7, bottomOfSlope - top);
+  ctx.fillRect(chimneyX + 2, top + 2, width - 4, buried - top - 4);
 
-  /* Flashing follows the slope across the stack, which is the join that makes it
-     read as passing through the roof rather than resting on it. */
-  ctx.fillStyle = '#37393c';
-  ctx.beginPath();
-  ctx.moveTo(chimneyX - 3, topOfSlope + 1);
-  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 1);
-  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 7);
-  ctx.lineTo(chimneyX - 3, topOfSlope + 7);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#4b4e53';
-  ctx.beginPath();
-  ctx.moveTo(chimneyX - 3, topOfSlope + 1);
-  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 1);
-  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 3);
-  ctx.lineTo(chimneyX - 3, topOfSlope + 3);
-  ctx.closePath();
-  ctx.fill();
+  // Brick courses and a shaded right face.
+  ctx.fillStyle = 'rgba(40,22,16,.4)';
+  for (let by = top + 12; by < buried; by += 13) ctx.fillRect(chimneyX + 2, by, width - 4, 2);
+  ctx.fillStyle = 'rgba(20,10,8,.25)';
+  ctx.fillRect(chimneyX + width - 11, top + 2, 9, buried - top - 4);
 
   // Cap.
+  ctx.fillStyle = '#2a1a15';
+  ctx.fillRect(chimneyX - 7, top - 10, width + 14, 10);
   ctx.fillStyle = '#8d5642';
-  ctx.fillRect(chimneyX - 5, top - 8, width + 10, 9);
-  ctx.fillStyle = '#5c3728';
-  ctx.fillRect(chimneyX - 5, top + 1, width + 10, 3);
+  ctx.fillRect(chimneyX - 5, top - 9, width + 10, 8);
+  ctx.fillStyle = '#a26a52';
+  ctx.fillRect(chimneyX - 5, top - 9, width + 10, 2);
 }
 
 /** `boarded` planks over the glass; the other window stays lit and warm. */
