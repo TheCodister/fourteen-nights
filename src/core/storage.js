@@ -3,6 +3,7 @@
 const KEY_SCRAP = 'fn_scrap';
 const KEY_UPGRADES = 'fn_upgrades';
 const KEY_DIFFICULTY = 'fn_difficulty';
+const KEY_RUN = 'fn_run';
 
 function read(key, fallback) {
   try {
@@ -42,6 +43,38 @@ export function loadDifficulty() {
 
 export function saveDifficulty(id) {
   write(KEY_DIFFICULTY, id);
+}
+
+/* An in-progress run, so closing the tab on night twelve is recoverable.
+
+   Only the between-nights shape is stored — never live zombies, bullets or
+   particles. Serialising mid-fight entities would be far more fragile and buys
+   nothing: resuming at the start of the interrupted night is both simpler and
+   fairer. `v` is checked on load so an older save from a previous build is
+   discarded rather than restored into a shape the code no longer expects. */
+export const RUN_SAVE_VERSION = 3;
+
+export function loadRun() {
+  try {
+    const parsed = JSON.parse(read(KEY_RUN, 'null'));
+    if (!parsed || parsed.v !== RUN_SAVE_VERSION) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveRun(snapshot) {
+  write(KEY_RUN, JSON.stringify({ ...snapshot, v: RUN_SAVE_VERSION }));
+}
+
+export function clearRun() {
+  try {
+    localStorage.removeItem(KEY_RUN);
+  } catch {
+    // Some stores expose only get/set; overwriting is as good as removing.
+    write(KEY_RUN, 'null');
+  }
 }
 
 export function saveProfile({ scrap, upgrades }) {

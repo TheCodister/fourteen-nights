@@ -1,15 +1,32 @@
 import { createState, setState, state } from '../../core/state.js';
 import { saveDifficulty } from '../../core/storage.js';
 import { difficulties, difficultyOf } from '../../data/difficulty.js';
-import { resetRun } from '../../game/run.js';
-import { elements, showOverlay, setStatus, showHud } from '../dom.js';
+import { resetRun, savedRun, resumeRun } from '../../game/run.js';
+import { startNight } from '../../game/night.js';
+import { playMusic } from '../../core/music.js';
+import { elements, showOverlay, setStatus, showHud, pad } from '../dom.js';
+import { shopScreen } from './armory.js';
+import { dawnScreen } from './dawn.js';
 import { cacheScreen } from './cache.js';
 
 export function titleScreen() {
   setState(createState());
   setStatus('THE ROAD TO RESCUE');
   showHud(false);
+  playMusic('menu');
   render();
+}
+
+/* Picks a saved run back up. The run restarts at the top of whichever night was
+   interrupted — nothing mid-fight is stored — or at the dawn/shop screen the
+   player was on. */
+function continueRun() {
+  const phase = resumeRun();
+  if (!phase) return titleScreen();
+  showHud(false);
+  if (phase === 'dawn') return dawnScreen();
+  if (phase === 'shop') return shopScreen();
+  return startNight();
 }
 
 /** Re-rendered on every pick so the selected card and the start label follow it. */
@@ -21,15 +38,21 @@ function render() {
       <em>${mode.blurb}</em>
     </button>`).join('');
 
+  const saved = savedRun();
+  const resumeButton = saved
+    ? `<button class="action" id="continueRun">CONTINUE — NIGHT ${pad(saved.night)}</button>`
+    : '';
+
   showOverlay(`
     <div class="overline">A DARKLY COMIC SURVIVAL SHOOTER</div>
     <h1>FOURTEEN<br>NIGHTS</h1>
     <p>Hold the barricade. Make every headshot count. Rescue arrives in fourteen dawns—assuming you do.</p>
     <div class="difficulty-row">${cards}</div>
-    <button class="action" id="start">START A NEW RUN ON ${chosen.name}</button>
+    ${resumeButton}
+    <button class="action ${saved ? 'secondary' : ''}" id="start">START A NEW RUN ON ${chosen.name}</button>
     <button class="action secondary" id="upgrades">SPEND SCRAP</button>
     <div class="stat-line">${state.scrap} SCRAP BANKED &nbsp; / &nbsp; PERMANENT UPGRADES ACTIVE</div>
-  `, { start: resetRun, upgrades: cacheScreen });
+  `, { start: resetRun, upgrades: cacheScreen, continueRun });
 
   elements.overlay.querySelectorAll('[data-difficulty]').forEach((button) => {
     button.onclick = () => {

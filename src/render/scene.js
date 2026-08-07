@@ -4,6 +4,7 @@ import { state } from '../core/state.js';
 import { ctx } from './canvas.js';
 import { drawEnvironment } from './environment.js';
 import { drawPlayer, drawBot, drawZombie } from './actors.js';
+import { stick } from '../core/input.js';
 
 /* Barricade danger frame. Several zombies biting at once keeps `barrFlash`
    saturated, so the pulse term stays deliberately light — a wall under attack is
@@ -37,6 +38,29 @@ export function render() {
   ctx.restore();
   /* Outside the shake transform, so the danger frame stays pinned to the screen. */
   drawThreatVignette();
+  if (stick.active) drawStick();
+}
+
+/* Virtual thumb stick. Drawn where the finger went down, with the knob showing
+   how far it has been pushed, so analog movement is legible on a screen with no
+   physical stick to feel. */
+function drawStick() {
+  const baseX = W * 0.16;
+  const baseY = H * 0.72;
+  const reach = 54;
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = '#c8ff58';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(baseX, baseY, reach, 0, 7);
+  ctx.stroke();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#c8ff58';
+  ctx.beginPath();
+  ctx.arc(baseX + stick.dx * reach, baseY + stick.dy * reach, 20, 0, 7);
+  ctx.fill();
+  ctx.restore();
 }
 
 /* Blood on the ground, drawn under everything else. Stains hold full strength

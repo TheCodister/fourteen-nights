@@ -20,6 +20,8 @@ export function createState() {
   return {
     scene: /** @type {Scene} */ ('title'),
     night: 1,
+    /** Where a resumed run should pick up: 'night' | 'dawn' | 'shop'. */
+    runPhase: 'night',
     cash: 0,
     scrap: loadScrap(),
     upgrades: loadUpgrades(),

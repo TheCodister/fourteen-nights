@@ -74,6 +74,12 @@ export function reload() {
   state.instantReload = false;
 }
 
+/** Cycles carried weapons, for the touch button that has no 1/2 keys. */
+export function swapWeapon() {
+  if (!state.weapons[1]) return;
+  state.selected = state.selected === 0 ? 1 : 0;
+}
+
 /** Per-frame weapon timers plus the player's fire/reload/swap inputs. */
 export function serviceWeapons(dt) {
   state.fireCd = Math.max(0, state.fireCd - dt);

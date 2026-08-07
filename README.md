@@ -14,6 +14,12 @@ Then visit `http://localhost:8080`.
 
 > Tip: browser local storage saves permanent Scrap upgrades between runs. Clearing site data resets that progress.
 
+## Leaving and coming back
+
+Runs are checkpointed at every night, dawn and purchase, so closing the tab or a crash costs you at most the night you were in the middle of — the title screen offers **Continue** when a run is waiting. Only the between-nights shape is stored, never live zombies or bullets, so a resumed run restarts the interrupted night from the top rather than dropping you into a half-chewed barricade.
+
+Returning to the menu from the pause screen is the one action that deliberately throws a run away, which is why it asks twice. Banked Scrap and permanent upgrades are never at risk.
+
 ## Controls
 
 | Control | Action |
@@ -24,6 +30,8 @@ Then visit `http://localhost:8080`.
 | `R` | Reload manually |
 | `1` / `2` | Equip your primary or secondary weapon |
 | `Esc` | Pause or resume the current night |
+
+On a touch device the left of the screen is a virtual stick — put a thumb down anywhere there and drag to walk, at whatever speed you push it. The right side aims and fires, so one thumb can move while the other shoots. On-screen buttons cover reload, weapon swap and pause. Landscape is the playable orientation; portrait shows a prompt to turn the device.
 
 Weapons have infinite reserve ammunition but finite magazines. Reloading starts automatically when a magazine is empty, and a bar above the weapon slots shows how much of it is left.
 
@@ -204,6 +212,8 @@ Layer rule, enforced by convention: `config`/`data` import nothing, `core` impor
 | Change wave pacing | `src/systems/spawner.js` |
 | Change night flow or endings | `src/game/night.js` |
 | Add a screen | `src/ui/screens/`, wired in `src/ui/index.js` |
+| Change what a saved run keeps | `src/game/run.js` (`SAVED_FIELDS`) — bump `RUN_SAVE_VERSION` in `src/core/storage.js` so older saves are discarded |
+| Retune touch zones or the stick | `src/core/input.js` (`MOVE_ZONE`, `STICK_RANGE`, `DEADZONE`) |
 | Retune a weapon's sound or add a cue | `src/data/sounds.js` |
 | Change the score | `src/core/music.js` (`SONGS`) |
 

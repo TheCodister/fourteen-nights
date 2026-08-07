@@ -2,6 +2,7 @@
    how the night ends. Emits events instead of touching the DOM. */
 import { NIGHT_LENGTH, FINAL_NIGHT, PLAYER_MAX_HP } from '../config.js';
 import { state, saveProgress } from '../core/state.js';
+import { checkpoint, abandonRun } from './run.js';
 import { emit, EVENTS } from '../core/events.js';
 import { SFX } from '../core/sfx.js';
 import { PERKS } from '../data/survivors.js';
@@ -53,6 +54,7 @@ export function startNight() {
   state.bossKilled = false;
 
   SFX.nightStart();
+  checkpoint('night');
   emit(EVENTS.NIGHT_START, { night: state.night });
 }
 
@@ -122,6 +124,7 @@ function surviveNight() {
   const tier = Math.floor((state.night - 1) / SCRAP.tierEvery);
   state.scrap += scrapReward(SCRAP.perNight + tier * SCRAP.tierBonus);
   saveProgress();
+  checkpoint('dawn');
   emit(EVENTS.NIGHT_SURVIVED, { night: state.night });
 }
 
@@ -130,6 +133,8 @@ function endRun() {
   state.scene = 'gameover';
   state.scrap += scrapReward(Math.max(0, (state.night - 1) * SCRAP.perNightOnDeath));
   saveProgress();
+  // The run is over either way, so there is nothing left to resume.
+  abandonRun();
   emit(EVENTS.RUN_OVER, { night: state.night });
 }
 
@@ -137,5 +142,6 @@ function winRun() {
   state.scene = 'victory';
   state.scrap += scrapReward(SCRAP.victory);
   saveProgress();
+  abandonRun();
   emit(EVENTS.RUN_WON, { killed: state.killed });
 }

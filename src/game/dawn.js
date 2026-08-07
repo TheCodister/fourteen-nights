@@ -6,6 +6,7 @@ import { state } from '../core/state.js';
 import { upgrades } from '../data/upgrades.js';
 import { survivorPool, PERKS } from '../data/survivors.js';
 import { hasSurvivor, rank } from '../game/loadout.js';
+import { checkpoint } from './run.js';
 
 const REPAIR_PER_HOUR = 10;
 const FIND_CHANCE_PER_HOUR = 0.06;
@@ -51,6 +52,7 @@ export function resolveDawn(repairHours) {
   }
 
   state.night++;
+  checkpoint('shop');
   return {
     repairHours,
     searchHours,

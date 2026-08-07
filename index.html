@@ -58,11 +58,19 @@
           </div>
         </div>
 
+        <div id="touchControls" class="touch-controls">
+          <button id="touchReload" class="touch-button" type="button">RELOAD</button>
+          <button id="touchSwap" class="touch-button" type="button">SWAP</button>
+          <button id="touchPause" class="touch-button" type="button">II</button>
+        </div>
+
         <div id="overlay" class="overlay"></div>
       </section>
 
+      <p class="rotate-hint">Turn your device sideways — this one wants landscape.</p>
+
       <footer class="legend">
-        <span><kbd>WASD</kbd> move</span><span><kbd>MOUSE</kbd> aim / fire</span><span><kbd>R</kbd> reload</span><span><kbd>1</kbd><kbd>2</kbd> swap weapons</span>
+        <span><kbd>WASD</kbd> move</span><span><kbd>MOUSE</kbd> aim / fire</span><span><kbd>R</kbd> reload</span><span><kbd>1</kbd><kbd>2</kbd> swap weapons</span><span class="touch-hint">Touch: left side walks, right side aims and fires</span>
       </footer>
     </main>
     <script type="module" src="src/main.js"></script>

@@ -13,17 +13,35 @@ button { font:inherit; }
 .quiet-button { border:0; color:var(--muted); background:transparent; letter-spacing:.08em; font-size:13px; cursor:pointer; }
 .quiet-button:hover:not(:disabled) { color:var(--white); }
 .quiet-button:disabled { opacity:.45; cursor:not-allowed; }
-.stage { position:relative; flex:1; min-height:0; margin-top:16px; overflow:hidden; background:#080d18; border:1px solid var(--line); }
-canvas { width:100%; height:100%; min-height:510px; display:block; cursor:crosshair; image-rendering:pixelated; }
-.hud { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:22px 26px; text-shadow:0 2px 2px #000; }
+/* The stage keeps the canvas's 16:9 shape rather than stretching to fill. It used
+   to be flex:1 with a min-height, which on a phone squeezed the 1280x720 bitmap
+   into a tall box and distorted everything. Sizing the stage itself to the ratio
+   also keeps the HUD overlay and the pointer-to-world mapping exactly aligned
+   with the drawn area, which letterboxing inside the element would break. */
+.stage { container-type:size; position:relative; width:min(100%, calc((100vh - 148px) * 16 / 9)); aspect-ratio:16 / 9; margin:16px auto 0; overflow:hidden; background:#080d18; border:1px solid var(--line); }
+canvas { width:100%; height:100%; display:block; cursor:crosshair; image-rendering:pixelated; touch-action:none; }
+.touch-controls { display:none; position:absolute; right:1.1cqw; bottom:9cqw; flex-direction:column; gap:8px; z-index:2; }
+.touch-button { min-width:76px; min-width:max(52px,5.8cqw); padding:12px 10px; padding:max(7px,0.9cqw) max(6px,0.8cqw); border:1px solid rgba(200,220,239,.35); background:rgba(8,13,24,.72); color:var(--white); font:600 13px "DM Mono",monospace; letter-spacing:.08em; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.touch-button:active { border-color:var(--acid); background:rgba(200,255,88,.18); }
+.touch-hint { display:none; }
+/* Only devices that actually use a finger get the on-screen controls. */
+@media (pointer: coarse) { .touch-controls { display:flex; } .touch-hint { display:inline; } }
+body.touch-active .touch-controls { display:flex; }
+body.touch-active .touch-hint { display:inline; }
+/* Portrait on a phone leaves the stage tiny; landscape is the playable shape. */
+.rotate-hint { display:none; margin:10px 0 0; padding:10px; border:1px solid var(--gold); color:var(--gold); font:12px "DM Mono",monospace; text-align:center; letter-spacing:.08em; }
+@media (orientation: portrait) and (pointer: coarse) { .rotate-hint { display:block; } }
+body.touch-active .rotate-hint { display:none; }
+@media (orientation: portrait) { body.touch-active .rotate-hint { display:block; } }
+.hud { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:22px 26px; padding:1.7cqw 2cqw; text-shadow:0 2px 2px #000; }
 .hidden { display:none!important; }
 .hud-top,.hud-bottom { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; }
-.eyebrow,.meter-block span { display:block; color:#b6c7d1; font-family:"DM Mono",monospace; letter-spacing:.12em; font-size:10px; }
-.hud strong { display:block; font-size:31px; line-height:.9; letter-spacing:.025em; }
-.timer { text-align:center; }.timer strong { color:var(--gold); font-size:39px; }.cash { text-align:right; }.cash strong { color:var(--acid); }
-.meter-block { min-width:min(27vw,260px); font-family:"DM Mono",monospace; }.meter-block b { font-size:10px; color:#d9e7e9; font-weight:400; }
+.eyebrow,.meter-block span { display:block; color:#b6c7d1; font-family:"DM Mono",monospace; letter-spacing:.12em; font-size:10px; font-size:max(7px,0.78cqw); }
+.hud strong { display:block; font-size:31px; font-size:max(15px,2.36cqw); line-height:.9; letter-spacing:.025em; }
+.timer { text-align:center; }.timer strong { color:var(--gold); font-size:39px; font-size:max(19px,2.97cqw); }.cash { text-align:right; }.cash strong { color:var(--acid); }
+.meter-block { min-width:min(27vw,260px); font-family:"DM Mono",monospace; }.meter-block b { font-size:10px; font-size:max(7px,0.78cqw); color:#d9e7e9; font-weight:400; }
 .meter { height:7px; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.19); margin:5px 0 3px; overflow:hidden; }.meter i { display:block; height:100%; width:100%; background:var(--red); transition:width .15s; }.health .meter i { background:var(--acid); }
-.hud-side { display:flex; align-items:flex-end; gap:20px; }.hud-side.right { justify-content:flex-end; }.tally { text-align:center; }.tally strong { font-size:23px; color:#dce8ed; }.hud-side.right .tally strong { color:var(--white); }
+.hud-side { display:flex; align-items:flex-end; gap:20px; }.hud-side.right { justify-content:flex-end; }.tally { text-align:center; }.tally strong { font-size:23px; font-size:max(12px,1.75cqw); color:#dce8ed; }.hud-side.right .tally strong { color:var(--white); }
 .streak-badge { margin-top:6px; padding:2px 8px; color:#160707; background:var(--gold); font:500 11px "DM Mono",monospace; letter-spacing:.1em; white-space:nowrap; animation:pop .18s ease-out; }
 .weapon-hud { text-align:center; min-width:260px; }
 .weapon-slots { display:flex; gap:8px; justify-content:center; }
@@ -31,8 +49,8 @@ canvas { width:100%; height:100%; min-height:510px; display:block; cursor:crossh
 .weapon-slot.active { opacity:1; border-color:var(--gold); background:rgba(255,207,84,.1); }
 .weapon-slot.empty { opacity:.28; }
 .slot-key { grid-area:key; color:#b6c7d1; font:10px "DM Mono",monospace; border:1px solid #607080; padding:1px 4px; }
-.slot-name { grid-area:name; color:var(--white); font-size:17px; font-weight:700; letter-spacing:.05em; line-height:1; }
-.slot-ammo { grid-area:ammo; color:var(--gold); font:500 12px "DM Mono",monospace; }
+.slot-name { grid-area:name; color:var(--white); font-size:17px; font-size:max(10px,1.3cqw); font-weight:700; letter-spacing:.05em; line-height:1; }
+.slot-ammo { grid-area:ammo; color:var(--gold); font:500 12px "DM Mono",monospace; font-size:max(8px,0.92cqw); }
 .weapon-slot.low .slot-ammo { color:var(--red); }
 .reload-track { position:relative; height:12px; margin:0 auto 6px; max-width:220px; background:rgba(0,0,0,.65); border:1px solid rgba(255,255,255,.22); overflow:hidden; transition:opacity .12s; }
 /* Idle keeps the row's height so the weapon slots never jump on reload. */
@@ -87,4 +105,5 @@ canvas { width:100%; height:100%; min-height:510px; display:block; cursor:crossh
 .survivor-loadout-list { max-height:280px; overflow:auto; margin:20px 0; text-align:left; }.survivor-loadout { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }.survivor-loadout strong,.survivor-loadout small { display:block; }.survivor-loadout strong { color:var(--acid); font-size:19px; }.survivor-loadout small { color:var(--muted); font:10px "DM Mono",monospace; margin-top:2px; }.survivor-loadout select { min-width:145px; padding:7px; background:#111c28; color:var(--white); border:1px solid #586777; font:12px "DM Mono",monospace; }
 @keyframes rise { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
 @keyframes pop { from { opacity:0; transform:scale(.86) } to { opacity:1; transform:none } }
+@media (max-height:620px) { .legend { display:none; } .topbar { height:34px; font-size:12px; } .game-shell { padding:6px 10px; } .stage { width:min(100%, calc((100vh - 62px) * 16 / 9)); margin-top:8px; } }
 @media (max-width:620px) { .top-status,.legend span:nth-child(n+3),.tally{ display:none; }.game-shell{padding:8px}.stage{margin-top:8px}.hud{padding:14px}.hud strong{font-size:25px}.timer strong{font-size:30px}.hud-bottom{gap:8px}.meter-block{min-width:92px}.weapon-hud{min-width:115px}.weapon-slots{gap:4px}.slot-name{font-size:13px}.slot-ammo{font-size:10px}.reload-track{max-width:140px}.choice-row,.shop-grid{grid-template-columns:1fr}.difficulty-row{grid-template-columns:repeat(2,1fr)}.fort-row{grid-template-columns:1fr}.board{grid-template-columns:1fr}.survivor-slots{grid-template-columns:1fr}.overlay-panel{padding:24px 18px}.overlay h1{font-size:58px} }

@@ -39,7 +39,8 @@ globalThis.document = { querySelector: lookup };
 globalThis.localStorage = {
   store: new Map(),
   getItem(key) { return this.store.has(key) ? this.store.get(key) : null; },
-  setItem(key, value) { this.store.set(key, String(value)); }
+  setItem(key, value) { this.store.set(key, String(value)); },
+  removeItem(key) { this.store.delete(key); }
 };
 globalThis.performance = { now: () => 0 };
 
@@ -523,6 +524,109 @@ assert('every layer is a noise or oscillator source',
   everyRecipe.every((s) => s.layers.every((l) => l.src === 'noise' || l.src === 'osc')));
 assert('every layer decays in finite time',
   everyRecipe.every((s) => s.layers.every((l) => (l.decay ?? 0.12) > 0 && (l.decay ?? 0.12) < 3)));
+
+/* A thrown system must not kill the loop: before the guard, one error skipped
+   the line that schedules the next frame and the game froze on a still image. */
+const { startLoop, loopErrors } = await import('../src/core/loop.js');
+const beforeErrors = loopErrors().length;
+let ticks = 0;
+let renders = 0;
+const savedFrames = frames;
+frames = [];
+startLoop(() => {
+  ticks++;
+  throw new Error('deliberate update explosion');
+}, () => { renders++; });
+for (let i = 0; i < 4; i++) {
+  const queued = frames;
+  frames = [];
+  for (const fn of queued) fn(i * 16);
+}
+frames = savedFrames;
+assert('a throwing update does not stop the loop', ticks >= 3);
+assert('render still runs after update throws', renders >= 3);
+assert('the failure is reported once, not per frame', loopErrors().length === beforeErrors + 1);
+
+/* Particle drag must be frame-rate independent — it used to be applied per
+   frame, so particles decelerated far faster on a high-refresh display. */
+const particles = await import('../src/systems/particles.js');
+const speedAfterOneSecond = (step) => {
+  st.particles.length = 0;
+  st.particles.push({
+    x: 0, y: 0, vx: 400, vy: 0, kind: 'spark', color: '#fff',
+    drag: 0.92, life: 99, maxLife: 99, r: 2
+  });
+  for (let t = 0; t < 1; t += step) particles.updateParticles(step);
+  return Math.abs(st.particles[0]?.vx ?? 0);
+};
+const at60 = speedAfterOneSecond(1 / 60);
+const at144 = speedAfterOneSecond(1 / 144);
+assert(`drag matches across refresh rates (60Hz ${at60.toFixed(2)} vs 144Hz ${at144.toFixed(2)})`,
+  Math.abs(at60 - at144) < Math.max(0.5, at60 * 0.05));
+
+/* Run persistence: a refresh resumes, quitting to the menu does not. */
+const runModule = await import('../src/game/run.js');
+const storage = await import('../src/core/storage.js');
+runModule.abandonRun();
+assert('no saved run to begin with', runModule.savedRun() === null);
+
+Object.assign(st, {
+  night: 9, cash: 1234, fortification: 2, killed: 77, streakBest: 12,
+  armory: ['pistol', 'launcher'], weapons: ['launcher', null],
+  survivors: [{ id: 'nurse', name: 'Nurse Nia' }], survivorLoadout: { nurse: 'pistol' }
+});
+st.player.hp = 61;
+runModule.checkpoint('shop');
+const saved = runModule.savedRun();
+assert('checkpoint writes a resumable run', !!saved && saved.night === 9 && saved.runPhase === 'shop');
+assert('the save holds no live entities',
+  saved.zombies === undefined && saved.bullets === undefined && saved.particles === undefined);
+
+// Fresh state directly: clicking #again would start a run and checkpoint over
+// the very save being tested.
+stateModule.setState(stateModule.createState());
+const phase = runModule.resumeRun();
+assert('resuming restores the night and phase', phase === 'shop' && stateModule.state.night === 9);
+assert('resuming restores the armory and cash',
+  stateModule.state.cash === 1234 && stateModule.state.armory.includes('launcher'));
+assert('resuming restores survivors and health',
+  stateModule.state.survivors.length === 1 && stateModule.state.player.hp === 61);
+assert('resuming restores the fortification tier', stateModule.state.fortification === 2);
+
+runModule.abandonRun();
+assert('abandoning the run clears the save', runModule.savedRun() === null);
+
+localStorage.setItem('fn_run', JSON.stringify({ v: storage.RUN_SAVE_VERSION - 1, night: 5 }));
+assert('a save from an older build is discarded', runModule.savedRun() === null);
+
+/* Touch: the left of the canvas walks, the right aims and fires, independently. */
+const input = await import('../src/core/input.js');
+const canvasStub = {
+  handlers: {},
+  addEventListener(type, fn) { (this.handlers[type] ||= []).push(fn); },
+  getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 720 }),
+  setPointerCapture: noop, releasePointerCapture: noop
+};
+let fired = 0;
+input.bindInput(canvasStub, { onFire: () => { fired++; }, onTogglePause: noop });
+const send = (type, props) => (canvasStub.handlers[type] || []).forEach((fn) =>
+  fn({ preventDefault: noop, pointerType: 'touch', ...props }));
+
+send('pointerdown', { pointerId: 1, clientX: 200, clientY: 500 });   // left thumb
+assert('a touch on the left starts the movement stick', input.stick.active);
+assert('the movement thumb does not fire', fired === 0);
+send('pointermove', { pointerId: 1, clientX: 290, clientY: 500 });
+assert('pushing the stick right reports positive x', input.moveAxis().x > 0.5);
+
+send('pointerdown', { pointerId: 2, clientX: 1000, clientY: 400 });  // right thumb
+assert('a second touch on the right fires', fired === 1 && input.mouse.down);
+assert('walking and shooting work at the same time', input.stick.active && input.mouse.down);
+
+send('pointerup', { pointerId: 2, clientX: 1000, clientY: 400 });
+assert('lifting the aim thumb stops firing', !input.mouse.down);
+assert('lifting the aim thumb leaves movement alone', input.stick.active);
+send('pointerup', { pointerId: 1, clientX: 290, clientY: 500 });
+assert('lifting the move thumb stops the player', !input.stick.active && input.moveAxis().x === 0);
 
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

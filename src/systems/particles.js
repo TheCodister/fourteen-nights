@@ -151,8 +151,13 @@ export function updateParticles(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     if (p.drag) {
-      p.vx *= p.drag;
-      p.vy *= p.drag;
+      /* Drag is defined per 60Hz frame, so it has to be raised to the number of
+         frames this step represents. Multiplying once per frame instead made
+         particles decelerate about 2.4x faster on a 144Hz display than on a
+         60Hz one — blood behaved differently depending on the monitor. */
+      const damping = Math.pow(p.drag, dt * 60);
+      p.vx *= damping;
+      p.vy *= damping;
     }
     if (p.spin) p.rot += p.spin * dt;
     if (p.grow) p.r += p.grow * dt;

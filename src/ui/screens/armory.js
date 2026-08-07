@@ -15,6 +15,7 @@ import { state } from '../../core/state.js';
 import { weapons, STARTING_WEAPON } from '../../data/weapons.js';
 import { fortifications, nextFortification } from '../../data/fortifications.js';
 import { startNight } from '../../game/night.js';
+import { checkpoint } from '../../game/run.js';
 import {
   priceFor, buyWeapon, buyFortification, holderOf, moveWeapon, unassignSurvivor, clearPlayerSlot, survivorWeapon
 } from '../../game/loadout.js';
@@ -52,6 +53,7 @@ export function shopScreen() {
     button.onclick = () => {
       if (!buyWeapon(button.dataset.weapon)) return;
       SFX.purchase();
+      checkpoint('shop');
       shopScreen();
     };
   });
@@ -61,6 +63,7 @@ export function shopScreen() {
     fortButton.onclick = () => {
       if (!buyFortification()) return;
       SFX.purchase();
+      checkpoint('shop');
       shopScreen();
     };
   }
