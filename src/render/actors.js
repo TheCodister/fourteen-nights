@@ -69,13 +69,16 @@ function drawShadow(x, y, rx, alpha = 0.3) {
  * One upright human. `aim` is a world angle; the body mirrors to face it and the
  * gun arm rotates to it.
  */
-function drawHuman({ x, y, aim, skin, step, moving, id, weaponData }) {
+function drawHuman({ x, y, aim, skin, step, moving, id, weaponData, build = 'm', hair }) {
   const face = Math.cos(aim) >= 0 ? 1 : -1;
   /* Mirroring x turns a local angle A into world angle PI - A, so invert the
      angle when facing left to keep the gun pointing at the cursor. */
   const armAngle = face > 0 ? aim : Math.PI - aim;
   const swing = moving ? Math.sin(step) * 0.44 : 0;
   const breathe = Math.sin(step * 0.35) * 0.5;
+  const female = build === 'f';
+  const torsoW = female ? BODY.torsoW - 3 : BODY.torsoW;
+  const palette = hair ? { ...skin, hair } : skin;
 
   drawShadow(x, y + BODY.footY * ACTOR_SCALE, 16 * ACTOR_SCALE);
 
@@ -85,41 +88,41 @@ function drawHuman({ x, y, aim, skin, step, moving, id, weaponData }) {
 
   // The fixed spread is a standing stance: without it both legs overlap exactly
   // when idle and the figure reads as one-legged.
-  drawLeg(-swing - 0.15, skin.trousers, skin.boot, 0.82);
+  drawLeg(-swing - 0.15, palette.trousers, palette.boot, 0.82);
   // Pack rides on the back, which is behind the facing direction.
-  ctx.fillStyle = skin.pack;
-  ctx.fillRect(-BODY.torsoW / 2 - 5, BODY.torsoTop + 5 + breathe, 7, 15);
-  drawLeg(swing + 0.07, skin.trousers, skin.boot, 1);
+  ctx.fillStyle = palette.pack;
+  ctx.fillRect(-torsoW / 2 - 5, BODY.torsoTop + 5 + breathe, 7, 15);
+  drawLeg(swing + 0.07, palette.trousers, palette.boot, 1);
 
   // Torso: dark base, coat, then a lit front edge so it has a facing side.
   const torsoTop = BODY.torsoTop + breathe;
-  ctx.fillStyle = skin.coatShade;
-  ctx.fillRect(-BODY.torsoW / 2 - 1, torsoTop - 1, BODY.torsoW + 2, BODY.hipY - torsoTop + 4);
-  ctx.fillStyle = skin.coat;
-  ctx.fillRect(-BODY.torsoW / 2, torsoTop, BODY.torsoW, BODY.hipY - torsoTop + 3);
-  ctx.fillStyle = skin.coatLight;
-  ctx.fillRect(BODY.torsoW / 2 - 4, torsoTop, 4, BODY.hipY - torsoTop + 3);
+  ctx.fillStyle = palette.coatShade;
+  ctx.fillRect(-torsoW / 2 - 1, torsoTop - 1, torsoW + 2, BODY.hipY - torsoTop + 4);
+  ctx.fillStyle = palette.coat;
+  ctx.fillRect(-torsoW / 2, torsoTop, torsoW, BODY.hipY - torsoTop + 3);
+  ctx.fillStyle = palette.coatLight;
+  ctx.fillRect(torsoW / 2 - 4, torsoTop, 4, BODY.hipY - torsoTop + 3);
   // Collar.
-  ctx.fillStyle = skin.coatShade;
-  ctx.fillRect(-BODY.torsoW / 2, torsoTop, BODY.torsoW, 4);
+  ctx.fillStyle = palette.coatShade;
+  ctx.fillRect(-torsoW / 2, torsoTop, torsoW, 4);
 
   // Rear arm braces the weapon; drawn before the head so it sits behind.
   ctx.save();
   ctx.translate(BODY.shoulder.x, BODY.shoulder.y + breathe);
   ctx.rotate(armAngle * 0.72);
-  ctx.fillStyle = skin.coatShade;
+  ctx.fillStyle = palette.coatShade;
   ctx.fillRect(0, -2.5, 15, 5);
   ctx.restore();
 
-  drawHead(skin, breathe);
+  drawHead(palette, breathe, female);
 
   // Front arm plus the gun, rotated onto the cursor.
   ctx.save();
   ctx.translate(BODY.shoulder.x, BODY.shoulder.y + breathe);
   ctx.rotate(armAngle);
-  ctx.fillStyle = skin.coat;
+  ctx.fillStyle = palette.coat;
   ctx.fillRect(0, -3, 14, 6);
-  ctx.fillStyle = skin.skin;
+  ctx.fillStyle = palette.skin;
   ctx.fillRect(11, -2.5, 6, 5);
   drawWeapon(id, weaponData);
   ctx.restore();
@@ -140,7 +143,7 @@ function drawLeg(angle, trousers, boot, shade) {
   ctx.restore();
 }
 
-function drawHead(skin, breathe) {
+function drawHead(skin, breathe, female = false) {
   const y = BODY.headY + breathe;
   ctx.fillStyle = skin.skinShade;
   ctx.beginPath();
@@ -150,12 +153,24 @@ function drawHead(skin, breathe) {
   ctx.beginPath();
   ctx.arc(0.5, y, BODY.headR, 0, 7);
   ctx.fill();
-  // Hair sweeps back from the facing side, which gives the head a profile.
+  /* Hair sweeps back from the facing side, which gives the head a profile. The
+     female build carries it down past the jaw and gathers it behind, which is
+     the only silhouette cue that survives at this size. */
   ctx.fillStyle = skin.hair;
   ctx.beginPath();
   ctx.arc(-1, y - 2.5, BODY.headR, Math.PI * 0.92, Math.PI * 2.08);
   ctx.fill();
-  ctx.fillRect(-BODY.headR - 1, y - 4, 5, 7);
+  if (female) {
+    ctx.beginPath();
+    ctx.ellipse(-BODY.headR * 0.55, y + 3, BODY.headR * 0.72, BODY.headR * 1.15, 0.18, 0, 7);
+    ctx.fill();
+    // Gathered tail behind the shoulder.
+    ctx.beginPath();
+    ctx.ellipse(-BODY.headR - 1.5, y + 9, 3.4, 6.5, -0.25, 0, 7);
+    ctx.fill();
+  } else {
+    ctx.fillRect(-BODY.headR - 1, y - 4, 5, 7);
+  }
   ctx.fillStyle = '#20262b';
   ctx.fillRect(BODY.headR - 4.5, y - 1, 2.5, 2.5);
 }
@@ -176,6 +191,8 @@ export function drawPlayer() {
 
 export function drawBot(bot) {
   const w = weapons[bot.weaponId];
+  // The post is terrain: it stays put whether they are up, down or reloading.
+  drawFiringPost(bot);
 
   if (bot.downed) {
     drawDownedBot(bot);
@@ -191,7 +208,9 @@ export function drawBot(bot) {
     step: sway,
     moving: false,
     id: bot.weaponId,
-    weaponData: w
+    weaponData: w,
+    build: bot.survivor.build,
+    hair: bot.survivor.hair
   });
 
   drawBotHealth(bot);
@@ -211,6 +230,54 @@ export function drawBot(bot) {
 function shortWeaponName(name) {
   const words = name.split(' ');
   return words.length > 1 ? words.map((word) => word[0]).join('') : name;
+}
+
+/* A dug-in firing position, so a survivor standing in open grass reads as posted
+   there rather than parked at random. Sandbags face the road, an ammo crate sits
+   behind them, and the grass underfoot is trodden flat. */
+function drawFiringPost(bot) {
+  const x = bot.x;
+  const y = bot.y;
+
+  ctx.save();
+  // Trodden ground.
+  ctx.globalAlpha = 0.32;
+  ctx.fillStyle = '#3a3526';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 26, 40, 13, 0, 0, 7);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Ammo crate behind the shoulder.
+  ctx.fillStyle = '#4a3728';
+  ctx.fillRect(x - 40, y + 6, 20, 15);
+  ctx.fillStyle = '#5f4733';
+  ctx.fillRect(x - 40, y + 6, 20, 4);
+  ctx.fillStyle = '#2b2018';
+  ctx.fillRect(x - 38, y + 13, 16, 2);
+
+  /* Sandbags stacked into a low wall facing the road: two on the deck, one
+     bridging the joint. Laid out as a wall rather than a diagonal pile, or they
+     read as three dirt mounds at this size. */
+  const bags = [[x + 22, y + 23, 15], [x + 41, y + 23, 15], [x + 32, y + 11, 15]];
+  for (const [bx, by, r] of bags) {
+    ctx.fillStyle = '#2a2619';
+    ctx.beginPath();
+    ctx.ellipse(bx, by, r + 2, r * 0.66, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = '#8a7d55';
+    ctx.beginPath();
+    ctx.ellipse(bx, by - 1, r, r * 0.58, 0, 0, 7);
+    ctx.fill();
+    // Lit crown and the seam across the middle of the sack.
+    ctx.fillStyle = '#a2946a';
+    ctx.beginPath();
+    ctx.ellipse(bx - r * 0.15, by - r * 0.26, r * 0.62, r * 0.24, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(42,38,25,.55)';
+    ctx.fillRect(bx - r * 0.72, by - 1, r * 1.44, 1.8);
+  }
+  ctx.restore();
 }
 
 /** Only shown once they have actually been hurt, to keep the line uncluttered. */

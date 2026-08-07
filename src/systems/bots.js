@@ -41,7 +41,8 @@ export function createBots() {
       y: FORMATION.y + Math.floor(index / 2) * FORMATION.rowGap,
       aimAngle: 0,
       shotCd: 0.35 + index * 0.08,
-      accuracy: BOT_ACCURACY.min + Math.random() * BOT_ACCURACY.spread,
+      // Fixed at recruitment; the fallback covers runs saved before that change.
+      accuracy: survivor.accuracy ?? (BOT_ACCURACY.min + Math.random() * BOT_ACCURACY.spread),
       ammo: weapons[weaponId].mag,
       reload: 0,
       hp: BOT.hp,

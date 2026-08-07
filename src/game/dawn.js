@@ -4,7 +4,7 @@
 import { DAWN_HOURS, MAX_SURVIVORS } from '../config.js';
 import { state } from '../core/state.js';
 import { upgrades } from '../data/upgrades.js';
-import { survivorPool, PERKS } from '../data/survivors.js';
+import { survivorPool, PERKS, BOT_ACCURACY } from '../data/survivors.js';
 import { hasSurvivor, rank } from '../game/loadout.js';
 import { checkpoint } from './run.js';
 
@@ -47,8 +47,16 @@ export function resolveDawn(repairHours) {
   let found = null;
   if (searchHours > 0 && !rosterFull && Math.random() < findChanceFor(searchHours)) {
     const candidates = survivorPool.filter((survivor) => !hasSurvivor(survivor.id));
-    found = candidates[Math.floor(Math.random() * candidates.length)] ?? null;
-    if (found) state.survivors.push(found);
+    const recruit = candidates[Math.floor(Math.random() * candidates.length)] ?? null;
+    if (recruit) {
+      /* Accuracy is rolled once, here, and copied onto the survivor. It used to
+         be re-rolled per night in createBots while the dawn card showed an
+         unrelated 70-80% — so the number quoted on recruitment was never the
+         number they shot at. Spread onto a new object because survivorPool is a
+         module singleton: mutating the entry would leak into later runs. */
+      found = { ...recruit, accuracy: BOT_ACCURACY.min + Math.random() * BOT_ACCURACY.spread };
+      state.survivors.push(found);
+    }
   }
 
   state.night++;
@@ -58,7 +66,7 @@ export function resolveDawn(repairHours) {
     searchHours,
     repairAmount,
     found,
-    accuracy: 70 + Math.floor(Math.random() * 11),
+    accuracy: found ? Math.round(found.accuracy * 100) : 0,
     rosterFull
   };
 }

@@ -119,7 +119,8 @@ At dawn, you receive 12 hours to divide between repairs and finding survivors.
 
 Survivors stand behind the barricade and fire automatically.
 
-- Their accuracy is intentionally imperfect: **40–60%**.
+- Their accuracy is intentionally imperfect: **40–60%**, rolled once when you recruit them and fixed for the rest of the run. The number the dawn card quotes is that survivor's real accuracy — it used to invent a 70–80% figure while they actually shot at 40–60%, and re-rolled it every night on top of that.
+- Each is a distinct figure on the line, and each holds a dug-in firing position: sandbags facing the road, an ammo crate behind, and the grass trodden flat.
 - Each starts with a Pistol and reloads after emptying its magazine.
 - An assigned weapon supplies that survivor's own damage, fire rate, projectile speed, pellets/spread, piercing, and on-screen gun design.
 - They are slower on the trigger than you are, but only by a **fixed multiple of the weapon's own fire rate** (~1.4×). Hand a survivor an SMG and it still rips. The handicap used to include a flat delay per shot, which cost an SMG 3.9× its rate while a shotgun lost 1.7× — automatics felt broken in survivor hands.

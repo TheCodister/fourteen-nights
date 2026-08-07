@@ -628,5 +628,46 @@ assert('lifting the aim thumb leaves movement alone', input.stick.active);
 send('pointerup', { pointerId: 1, clientX: 290, clientY: 500 });
 assert('lifting the move thumb stops the player', !input.stick.active && input.moveAxis().x === 0);
 
+/* The dawn card used to quote 70-80% while the survivor actually shot at 40-60%,
+   and their accuracy was re-rolled every night on top of that. */
+const dawnModule = await import('../src/game/dawn.js');
+const { survivorPool, BOT_ACCURACY } = await import('../src/data/survivors.js');
+const botsModule = await import('../src/systems/bots.js');
+
+/* Written through stateModule.state, not the `st` alias captured earlier: the
+   resume test above called setState(), so `st` now points at a discarded object
+   and resolveDawn/createBots would be reading a different state entirely. */
+const live = () => stateModule.state;
+live().survivorLoadout = {};
+live().upgrades = {};
+let recruited = null;
+for (let i = 0; i < 200 && !recruited; i++) {
+  live().survivors = [];
+  const outcome = dawnModule.resolveDawn(0);   // all twelve hours searching
+  if (outcome.found) recruited = outcome;
+}
+assert('a full day of searching eventually finds someone', !!recruited);
+assert('the quoted accuracy is the survivor\'s real accuracy',
+  recruited.accuracy === Math.round(recruited.found.accuracy * 100));
+assert('the quoted accuracy is inside the real 40-60% band',
+  recruited.accuracy >= BOT_ACCURACY.min * 100 && recruited.accuracy <= (BOT_ACCURACY.min + BOT_ACCURACY.spread) * 100);
+
+live().survivors = [recruited.found];
+live().survivorLoadout = {};
+const firstNight = botsModule.createBots()[0].accuracy;
+const secondNight = botsModule.createBots()[0].accuracy;
+assert('accuracy no longer changes from night to night', firstNight === secondNight);
+assert('the bot shoots at the accuracy the card promised',
+  Math.round(firstNight * 100) === recruited.accuracy);
+
+assert('the shared survivor pool was not mutated',
+  survivorPool.every((entry) => entry.accuracy === undefined));
+
+// Every survivor carries the identity the renderer draws them with.
+assert('every survivor has a build and hair colour',
+  survivorPool.every((entry) => (entry.build === 'f' || entry.build === 'm') && /^#[0-9a-f]{6}$/i.test(entry.hair)));
+assert('the roster is not all one build',
+  new Set(survivorPool.map((entry) => entry.build)).size === 2);
+
 console.log(failures ? `\n${failures} failing` : '\nall passing');
 process.exit(failures ? 1 : 0);

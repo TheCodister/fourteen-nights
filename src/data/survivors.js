@@ -1,12 +1,14 @@
 /* Recruitable defenders. `id` is what perk checks look for — see PERKS below
    for where each one is read. */
+/* `build` and `hair` are read by render/actors.js so the line is made of
+   recognisable people rather than six copies of one figure. */
 export const survivorPool = [
-  { id: 'mechanic', name: 'Mechanic Mae', perk: 'Repairs restore +20 barricade health.' },
-  { id: 'nurse', name: 'Nurse Nia', perk: 'Restores 20 player health at dawn.' },
-  { id: 'officer', name: 'Officer Ortiz', perk: 'Your first reload each night is instant.' },
-  { id: 'accountant', name: 'Accountant Al', perk: '+12% cash from kills.' },
-  { id: 'inventor', name: 'Inventor Izzy', perk: 'Better odds of Moonbeam-9 parts.' },
-  { id: 'cook', name: 'Cook Carl', perk: '+15% movement speed for the first 5 seconds.' }
+  { id: 'mechanic', name: 'Mechanic Mae', perk: 'Repairs restore +20 barricade health.', build: 'f', hair: '#5b3a24' },
+  { id: 'nurse', name: 'Nurse Nia', perk: 'Restores 20 player health at dawn.', build: 'f', hair: '#241a16' },
+  { id: 'officer', name: 'Officer Ortiz', perk: 'Your first reload each night is instant.', build: 'f', hair: '#3b2a1c' },
+  { id: 'accountant', name: 'Accountant Al', perk: '+12% cash from kills.', build: 'm', hair: '#6b6b6b' },
+  { id: 'inventor', name: 'Inventor Izzy', perk: 'Better odds of Moonbeam-9 parts.', build: 'f', hair: '#7d4a2c' },
+  { id: 'cook', name: 'Cook Carl', perk: '+15% movement speed for the first 5 seconds.', build: 'm', hair: '#2b1f18' }
 ];
 
 /* Perk magnitudes, kept next to the roster so balance passes touch one file. */

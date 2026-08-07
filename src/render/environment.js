@@ -384,6 +384,7 @@ function drawHouse(dawn) {
 
   drawRoof(x, w, apexY, eaveY, eaveOut, centerX);
   drawChimney(eaveY, apexY, centerX);
+  drawWallDetail();
   drawWindow(HOUSE.x + 26, 302, true);
   drawWindow(HOUSE.x + 190, 302, false, dawn);
   drawDoor(dawn);
@@ -398,6 +399,27 @@ function drawHouse(dawn) {
   ctx.fillStyle = spill;
   ctx.fillRect(glowX - 210, 250, 420, 300);
   ctx.restore();
+}
+
+/* The right third of the wall was an empty slab next to a busy left side. A
+   gable vent and a downpipe balance it without adding another window. */
+function drawWallDetail() {
+  const ventX = HOUSE.x + HOUSE.w - 74;
+  ctx.fillStyle = '#2a1a15';
+  ctx.fillRect(ventX, 292, 44, 34);
+  ctx.fillStyle = '#3d2a20';
+  ctx.fillRect(ventX + 3, 295, 38, 28);
+  ctx.fillStyle = '#241812';
+  for (let i = 0; i < 4; i++) ctx.fillRect(ventX + 5, 298 + i * 7, 34, 3);
+
+  // Downpipe running to the ground.
+  const pipeX = HOUSE.x + HOUSE.w - 14;
+  ctx.fillStyle = '#3a2b22';
+  ctx.fillRect(pipeX, HOUSE.eaveY + 10, 7, HOUSE.base - HOUSE.eaveY - 10);
+  ctx.fillStyle = '#4d3a2d';
+  ctx.fillRect(pipeX, HOUSE.eaveY + 10, 2, HOUSE.base - HOUSE.eaveY - 10);
+  ctx.fillStyle = '#2a1e18';
+  for (const braceY of [HOUSE.eaveY + 40, HOUSE.eaveY + 110]) ctx.fillRect(pipeX - 2, braceY, 11, 4);
 }
 
 function drawRoof(x, w, apexY, eaveY, eaveOut, centerX) {
@@ -424,15 +446,25 @@ function drawRoof(x, w, apexY, eaveY, eaveOut, centerX) {
   ctx.clip();
   ctx.fillStyle = '#5b2e26';
   for (let y = apexY + 10; y < eaveY; y += 13) ctx.fillRect(left, y, right - left, 4);
-  // Shade the right slope so the gable reads as two planes.
-  ctx.fillStyle = 'rgba(20,10,8,.22)';
+  /* Shade across the gable with a gradient rather than a triangle. The triangle
+     put a hard vertical edge down the centre of the roof, which read as a seam
+     splitting it in two instead of as light falling across one face. */
+  const roofShade = ctx.createLinearGradient(left, 0, right, 0);
+  roofShade.addColorStop(0, 'rgba(255,220,190,.07)');
+  roofShade.addColorStop(0.45, 'rgba(20,10,8,0)');
+  roofShade.addColorStop(1, 'rgba(20,10,8,.26)');
+  ctx.fillStyle = roofShade;
+  ctx.fillRect(left, apexY, right - left, eaveY - apexY);
+  ctx.restore();
+
+  // Ridge cap, so the apex is a built edge rather than a bare point.
+  ctx.fillStyle = '#4a251f';
   ctx.beginPath();
-  ctx.moveTo(centerX, apexY);
-  ctx.lineTo(right, eaveY);
-  ctx.lineTo(centerX, eaveY);
+  ctx.moveTo(centerX - 7, apexY + 13);
+  ctx.lineTo(centerX, apexY - 1);
+  ctx.lineTo(centerX + 7, apexY + 13);
   ctx.closePath();
   ctx.fill();
-  ctx.restore();
 
   // Fascia board along the eaves.
   ctx.fillStyle = '#83503c';
@@ -442,15 +474,71 @@ function drawRoof(x, w, apexY, eaveY, eaveOut, centerX) {
 }
 
 function drawChimney(eaveY, apexY, centerX) {
-  const chimneyX = centerX + 86;
-  // Meet the right slope exactly, so the stack is embedded rather than pasted on.
-  const slopeY = apexY + (chimneyX - centerX) / (HOUSE.x + HOUSE.w + HOUSE.eaveOut - centerX) * (eaveY - apexY);
+  const roofLeft = HOUSE.x - HOUSE.eaveOut;
+  const roofRight = HOUSE.x + HOUSE.w + HOUSE.eaveOut;
+  const width = 34;
+  const chimneyX = centerX + 58;
+
+  /* Where the roof surface sits at a given x. The stack has to reach the slope
+     under its LOWER edge, not its upper one: the roof falls away to the right,
+     so sizing it to the left edge left the whole right half hanging in the sky. */
+  const slopeAt = (px) => apexY + ((px - centerX) / (roofRight - centerX)) * (eaveY - apexY);
+  const topOfSlope = slopeAt(chimneyX);
+  const bottomOfSlope = slopeAt(chimneyX + width);
+  const top = topOfSlope - 62;
+
+  // Shadow down the slope, clipped to the gable so it cannot spill into the sky.
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(roofLeft, eaveY);
+  ctx.lineTo(centerX, apexY);
+  ctx.lineTo(roofRight, eaveY);
+  ctx.closePath();
+  ctx.clip();
+  ctx.globalAlpha = 0.26;
+  ctx.fillStyle = '#1b0f0c';
+  ctx.beginPath();
+  ctx.moveTo(chimneyX + width, topOfSlope);
+  ctx.lineTo(chimneyX + width + 46, bottomOfSlope + 30);
+  ctx.lineTo(chimneyX + width, bottomOfSlope + 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Brick, buried a few pixels past the slope so no gap can open under it.
   ctx.fillStyle = '#241614';
-  ctx.fillRect(chimneyX, slopeY - 74, 32, 78);
+  ctx.fillRect(chimneyX - 2, top - 2, width + 4, bottomOfSlope - top + 6);
   ctx.fillStyle = '#6f4032';
-  ctx.fillRect(chimneyX + 4, slopeY - 70, 24, 74);
+  ctx.fillRect(chimneyX + 2, top + 2, width - 4, bottomOfSlope - top);
+  ctx.fillStyle = 'rgba(40,22,16,.4)';
+  for (let by = top + 12; by < bottomOfSlope; by += 13) ctx.fillRect(chimneyX + 2, by, width - 4, 2);
+  ctx.fillStyle = 'rgba(20,10,8,.22)';
+  ctx.fillRect(chimneyX + width - 9, top + 2, 7, bottomOfSlope - top);
+
+  /* Flashing follows the slope across the stack, which is the join that makes it
+     read as passing through the roof rather than resting on it. */
+  ctx.fillStyle = '#37393c';
+  ctx.beginPath();
+  ctx.moveTo(chimneyX - 3, topOfSlope + 1);
+  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 1);
+  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 7);
+  ctx.lineTo(chimneyX - 3, topOfSlope + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#4b4e53';
+  ctx.beginPath();
+  ctx.moveTo(chimneyX - 3, topOfSlope + 1);
+  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 1);
+  ctx.lineTo(chimneyX + width + 3, bottomOfSlope + 3);
+  ctx.lineTo(chimneyX - 3, topOfSlope + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cap.
   ctx.fillStyle = '#8d5642';
-  ctx.fillRect(chimneyX - 2, slopeY - 78, 36, 8);
+  ctx.fillRect(chimneyX - 5, top - 8, width + 10, 9);
+  ctx.fillStyle = '#5c3728';
+  ctx.fillRect(chimneyX - 5, top + 1, width + 10, 3);
 }
 
 /** `boarded` planks over the glass; the other window stays lit and warm. */
@@ -463,20 +551,38 @@ function drawWindow(x, y, boarded, dawn = 0) {
   if (boarded) {
     /* Crossed planks overhanging the frame, so it reads as boards nailed over
        glass rather than as siding. Horizontal bars looked like wall slats. */
+    // Broken glass still in the frame, so the boards cover something.
+    ctx.fillStyle = '#39322c';
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 4);
+    ctx.lineTo(x + 22, y + 18);
+    ctx.lineTo(x + 6, y + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 46, y + 6);
+    ctx.lineTo(x + 30, y + 22);
+    ctx.lineTo(x + 46, y + 34);
+    ctx.closePath();
+    ctx.fill();
+
+    /* Boards kept just inside the sill. They used to run 84px wide against a
+       50px frame, so they hung into open siding and read as loose planks stuck
+       on the wall rather than as a window boarded shut. */
     ctx.save();
     ctx.translate(x + 25, y + 24);
-    for (const angle of [0.34, -0.34]) {
+    for (const angle of [0.36, -0.36]) {
       ctx.save();
       ctx.rotate(angle);
       ctx.fillStyle = '#7b5439';
-      ctx.fillRect(-42, -8, 84, 16);
+      ctx.fillRect(-33, -7, 66, 14);
       ctx.fillStyle = '#966844';
-      ctx.fillRect(-42, -6, 84, 4);
+      ctx.fillRect(-33, -5, 66, 3);
       ctx.fillStyle = '#40291c';
-      ctx.fillRect(-42, 5, 84, 3);
+      ctx.fillRect(-33, 4, 66, 3);
       ctx.fillStyle = '#2b1c13';
-      ctx.fillRect(-34, -3, 3, 3);
-      ctx.fillRect(31, -3, 3, 3);
+      ctx.fillRect(-26, -2, 3, 3);
+      ctx.fillRect(23, -2, 3, 3);
       ctx.restore();
     }
     ctx.restore();
@@ -505,7 +611,8 @@ function drawDoor(dawn) {
   ctx.fillStyle = '#6b4132';
   ctx.fillRect(x, 332, 52, HOUSE.base - 332);
   ctx.fillStyle = '#573327';
-  ctx.fillRect(x + 6, 342, 40, 40);
+  ctx.fillRect(x + 6, 342, 40, 38);
+  ctx.fillRect(x + 6, 388, 40, 38);
   ctx.fillStyle = mixColor('#e8bd66', '#fff0c4', dawn);
   ctx.beginPath();
   ctx.arc(x + 44, 396, 3.5, 0, 7);
@@ -518,10 +625,26 @@ function drawPorch() {
   const left = HOUSE.x - 20;
   const right = HOUSE.x + HOUSE.w + 20;
 
+  /* Skirt and piers under the deck. Without them the porch was a plank floating
+     over grass with a gap behind it. */
+  ctx.fillStyle = '#20160f';
+  ctx.fillRect(left + 6, HOUSE.porchBottom, right - left - 12, HOUSE.fenceBottom - HOUSE.porchBottom - 6);
+  ctx.fillStyle = '#2c2018';
+  for (let px = left + 14; px < right - 16; px += 22) {
+    ctx.fillRect(px, HOUSE.porchBottom, 9, HOUSE.fenceBottom - HOUSE.porchBottom - 8);
+  }
+  ctx.fillStyle = '#3a2a1e';
+  for (const pier of [left + 8, HOUSE.centerX - 70, HOUSE.centerX + 62, right - 20]) {
+    ctx.fillRect(pier, HOUSE.porchBottom - 2, 13, HOUSE.fenceBottom - HOUSE.porchBottom + 2);
+  }
+
   ctx.fillStyle = '#4a3226';
   ctx.fillRect(left, HOUSE.porchTop, right - left, HOUSE.porchBottom - HOUSE.porchTop);
   ctx.fillStyle = '#2b1c15';
   ctx.fillRect(left, HOUSE.porchBottom - 4, right - left, 4);
+  // Deck boards, so the floor has a direction.
+  ctx.fillStyle = 'rgba(28,18,12,.35)';
+  for (let bx = left + 12; bx < right - 6; bx += 24) ctx.fillRect(bx, HOUSE.porchTop, 2, 12);
 
   // Steps down to the path.
   ctx.fillStyle = '#54382a';
