@@ -1,7 +1,7 @@
 /* Wires simulation events to screens. This is the only bridge between src/game
    and src/ui — the game layer never imports a screen. */
 import { on, EVENTS } from '../core/events.js';
-import { toggleSfx, toggleMusic, isSfxOn, isMusicOn, unlock, audioAvailable } from '../core/audio.js';
+import { toggleSfx, toggleMusic, isMusicOn, unlock, audioAvailable } from '../core/audio.js';
 import { playMusic, currentMood } from '../core/music.js';
 import { state } from '../core/state.js';
 import { difficultyOf } from '../data/difficulty.js';
@@ -44,8 +44,13 @@ export function bindUi() {
   });
 
   if (!audioAvailable()) {
+    /* No AudioContext at all. Label and disable both, rather than leaving live
+       buttons that would flip to "ON" and claim sound the browser cannot make. */
     elements.soundButton.textContent = 'SOUND: N/A';
     elements.musicButton.textContent = 'MUSIC: N/A';
+    elements.soundButton.disabled = true;
+    elements.musicButton.disabled = true;
+    return;
   }
 
   elements.soundButton.onclick = () => {
@@ -58,12 +63,18 @@ export function bindUi() {
   };
 
   /* Browsers only allow an AudioContext to start inside a user gesture, so the
-     first click anywhere builds the graph and kicks the menu theme off. */
+     first click builds the graph and kicks the menu theme off.
+
+     The listener stays attached rather than firing once: a context can be
+     suspended again later — a backgrounded tab on mobile, an OS audio
+     interruption — and every cue silently no-ops while it is. Without a standing
+     resume path the only recovery would be toggling sound off and on. */
   const wake = () => {
     unlock();
     if (isMusicOn()) playMusic(currentMood() || 'menu');
-    if (!isSfxOn()) elements.soundButton.textContent = 'SOUND: OFF';
-    window.removeEventListener('pointerdown', wake);
   };
   window.addEventListener('pointerdown', wake);
+  document.addEventListener?.('visibilitychange', () => {
+    if (!document.hidden) unlock();
+  });
 }

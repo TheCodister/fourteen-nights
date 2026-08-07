@@ -80,15 +80,26 @@ export function currentMood() {
 }
 
 function schedule(target, song) {
-  if (!isMusicOn()) return;
   const { ctx } = target;
-  /* A suspended context has a frozen clock, so scheduling against it would queue
-     every note at the same instant and dump them all on resume. Re-anchor and
-     wait instead. */
-  if (ctx.state !== 'running') {
+
+  /* Muted or suspended: keep the cursor pinned to now.
+
+     Both cases have to re-anchor, not just return. `nextTime` is the sequencer's
+     write cursor, and if it is left behind while nothing is playing, the first
+     live tick tries to replay the entire silent gap — one node per missed step,
+     measured at 258 nodes and a dropped frame after twenty seconds muted, and
+     growing linearly from there. They are inaudible (their envelopes expired in
+     the past) but the allocation burst is real. */
+  if (!isMusicOn() || ctx.state !== 'running') {
     nextTime = ctx.currentTime + 0.08;
     return;
   }
+
+  /* Same guard for any other stall. A backgrounded tab throttles this timer to
+     once a second or worse while the audio clock keeps running, so skip whatever
+     gap opened up rather than replaying it. */
+  if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.02;
+
   const stepLength = 60 / song.bpm / 4;
 
   while (nextTime < ctx.currentTime + LOOKAHEAD) {
